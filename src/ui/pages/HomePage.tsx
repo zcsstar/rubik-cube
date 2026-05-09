@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Sparkles, GraduationCap, Lock } from 'lucide-react';
+import { Sparkles, GraduationCap, Lock, Dumbbell } from 'lucide-react';
 import type { CubeSize } from '@core/cube/ICube';
 import { Cube3x3 } from '@core/cube/Cube3x3';
 import { CubeViewer3D } from '@ui/components/CubeViewer3D/CubeViewer3D';
@@ -108,6 +108,12 @@ function CubeCard({ offer }: { offer: CubeOffer }) {
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <GraduationCap size={14} /> {t('home.btn.learn')}
+            </Link>
+            <Link
+              to={`/practice/${size}`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <Dumbbell size={14} /> {t('home.btn.practice')}
             </Link>
           </>
         )}

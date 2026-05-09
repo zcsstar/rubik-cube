@@ -11,6 +11,7 @@ export const zh: Messages = {
   // Navigation
   'nav.solve': '解法',
   'nav.learn': '学习',
+  'nav.practice': '练习',
   'nav.cube2': '二阶',
   'nav.cube3': '三阶',
   'nav.cube4': '四阶',
@@ -29,6 +30,7 @@ export const zh: Messages = {
   'home.cube4.badge': '即将推出',
   'home.btn.solve': '解开',
   'home.btn.learn': '学习',
+  'home.btn.practice': '练习',
   'home.btn.comingSoon': '即将推出',
 
   // Solver page
@@ -128,6 +130,19 @@ export const zh: Messages = {
   'tutorial.casesInStep': '本步骤的图形',
   'tutorial.btn.resetCase': '重置案例',
   'tutorial.algorithmLabel': '口诀',
+
+  // Practice mode
+  'practice.title': '练习模式',
+  'practice.blurb': '选择一个步骤,系统会给出一个打乱状态,你用按键尝试自己还原。完成时会给你提示。',
+  'practice.movePad': '移动按键',
+  'practice.undo': '撤销',
+  'practice.btn.reset': '重置案例',
+  'practice.btn.nextCase': '换一个案例',
+  'practice.btn.showAnswer': '显示答案',
+  'practice.btn.hideAnswer': '隐藏答案',
+  'practice.success': '用 {moves} 步还原成功!(参考口诀 {optimal} 步)',
+  'practice.statusPlaying': '当前步数:{moves}',
+  'practice.answerHidden': '答案已隐藏 — 先自己尝试一下!',
 
   // 404
   'notfound.title': '页面未找到',

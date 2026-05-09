@@ -2,6 +2,7 @@ import { Routes, Route, Link, NavLink } from 'react-router-dom';
 import { HomePage } from '@ui/pages/HomePage';
 import { SolvePage } from '@ui/pages/SolvePage';
 import { TutorialPage } from '@ui/pages/TutorialPage';
+import { PracticePage } from '@ui/pages/PracticePage';
 import { NotFoundPage } from '@ui/pages/NotFoundPage';
 import { Logo } from '@ui/components/Logo';
 import { LocaleSwitcher } from '@ui/components/LocaleSwitcher/LocaleSwitcher';
@@ -40,6 +41,14 @@ function Layout({ children }: { children: React.ReactNode }) {
                 <NavLink to="/learn/2" className={navLink}>{t('nav.cube2')}</NavLink>
                 <NavLink to="/learn/3" className={navLink}>{t('nav.cube3')}</NavLink>
               </span>
+              <span className="hidden h-4 w-px bg-slate-200 sm:inline-block dark:bg-slate-700" />
+              <span className="flex items-center gap-1">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  {t('nav.practice')}
+                </span>
+                <NavLink to="/practice/2" className={navLink}>{t('nav.cube2')}</NavLink>
+                <NavLink to="/practice/3" className={navLink}>{t('nav.cube3')}</NavLink>
+              </span>
             </nav>
             <LocaleSwitcher />
           </div>
@@ -63,6 +72,8 @@ export default function App() {
         <Route path="/solve/4" element={<SolvePage size={4} />} />
         <Route path="/learn/2" element={<TutorialPage size={2} />} />
         <Route path="/learn/3" element={<TutorialPage size={3} />} />
+        <Route path="/practice/2" element={<PracticePage size={2} />} />
+        <Route path="/practice/3" element={<PracticePage size={3} />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Layout>

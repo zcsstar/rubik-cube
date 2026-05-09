@@ -11,6 +11,7 @@ export const en: Messages = {
   // Navigation
   'nav.solve': 'Solve',
   'nav.learn': 'Learn',
+  'nav.practice': 'Practice',
   'nav.cube2': '2×2',
   'nav.cube3': '3×3',
   'nav.cube4': '4×4',
@@ -29,6 +30,7 @@ export const en: Messages = {
   'home.cube4.badge': 'Soon',
   'home.btn.solve': 'Solve',
   'home.btn.learn': 'Learn',
+  'home.btn.practice': 'Practice',
   'home.btn.comingSoon': 'Coming soon',
 
   // Solver page
@@ -129,6 +131,20 @@ export const en: Messages = {
   'tutorial.casesInStep': 'Cases in this step',
   'tutorial.btn.resetCase': 'Reset case',
   'tutorial.algorithmLabel': 'Algorithm',
+
+  // Practice mode
+  'practice.title': 'Practice mode',
+  'practice.blurb':
+    'Pick a step, get a scrambled case, and try to solve it yourself with the move pad. We will tell you when you reach the goal.',
+  'practice.movePad': 'Moves',
+  'practice.undo': 'Undo',
+  'practice.btn.reset': 'Reset case',
+  'practice.btn.nextCase': 'Try a different case',
+  'practice.btn.showAnswer': 'Show answer',
+  'practice.btn.hideAnswer': 'Hide answer',
+  'practice.success': 'Solved in {moves} moves! (Reference algorithm uses {optimal})',
+  'practice.statusPlaying': 'Moves so far: {moves}',
+  'practice.answerHidden': 'Answer hidden — try it on your own first!',
 
   // 404
   'notfound.title': 'Page not found',

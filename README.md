@@ -20,6 +20,7 @@ Phase 3 wraps it in Capacitor for iOS/Android.
 | Multi-language UI (English + 简体中文)    | ✅ ready (locale switcher in navbar; tutorials translated) |
 | Camera color recognition (HSV nearest-neighbour) | ✅ ready (six-face guided capture, hands result to ColorInputNet for review) |
 | PWA install + offline support              | ✅ ready (installable on iOS / Android / desktop; works offline after first visit) |
+| Practice mode (try a tutorial case yourself) | ✅ ready at `/practice/3` and `/practice/2` (cube starts in a case state, user inputs moves with the on-screen pad, app validates when solved) |
 | True LBL solver (auto-solves a user's cube via beginner method) | ⏳ pending — pattern-recognition for ~20 cases across 7 stages; current `Solver3x3Kociemba` is faster, the tutorial pages teach the method |
 | Camera color recognition                 | ⏳ deferred to Phase 2 |
 
@@ -119,9 +120,10 @@ Tracked here so we don't forget. Roughly in priority order.
 * **`Cube4x4` + `Solver4x4Reduction`** — full 4×4 mechanics (96
   stickers, wide moves) plus the centres → edges → 3×3 reduction
   solver with parity fix-ups.
-* **Practice mode** — scramble the cube to a known mid-LBL state
-  (e.g., F2L done, OLL pending) and let the user attempt that phase
-  with feedback.
+* ~~**Practice mode** — scramble the cube to a known mid-LBL state
+  and let the user attempt that phase with feedback.~~ ✅ shipped
+  at `/practice/N`. Built on top of the tutorial case data so we
+  reuse the same setups + canonical algorithms.
 * ~~**PWA install** — manifest + service-worker so users can install
   the site to their home screen and use it offline.~~ ✅ shipped.
 * **Phase 3: Capacitor wrap** — package the existing static build for
