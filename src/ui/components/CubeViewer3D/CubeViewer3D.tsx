@@ -101,12 +101,10 @@ function CubieMesh({ cubie, cubieSize, colors }: CubieMeshProps) {
             rotation={FACE_ROTATIONS[face]}
           >
             <shapeGeometry args={[stickerShape]} />
-            <meshPhysicalMaterial
+            <meshStandardMaterial
               color={colors[color] ?? '#888'}
-              roughness={0.4}
+              roughness={0.35}
               metalness={0}
-              clearcoat={0.6}
-              clearcoatRoughness={0.18}
             />
           </mesh>
         );
