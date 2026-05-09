@@ -102,14 +102,11 @@ already support them.
 
 Tracked here so we don't forget. Roughly in priority order.
 
-* **Slice-move support (M / E / S)** — extend the move parser and 3×3
-  applier to accept middle-slice rotations. Unlocks the canonical
-  finger-friendly PLL algorithms (H-perm in 7 moves vs ~12 with outer
-  turns only).
-* **Full PLL coverage** — after slice-move support lands, expand the
-  3×3 step-7 tutorial from 2 cases to all 21 named PLL cases (Aa, Ab,
-  E, T, F, V, Y, Ja, Jb, Ra, Rb, Na, Nb, Ga–Gd, Ua, Ub, H, Z) with
-  recognition tips and round-trip-tested setups.
+* ~~**Slice-move support (M / E / S)** — extend the move parser and
+  3×3 applier to accept middle-slice rotations.~~ ✅ shipped.
+* ~~**Full PLL coverage** — expand step-7 tutorial to all 21 named PLL
+  cases.~~ ✅ shipped (Ua, Ub, H, Z, Aa, Ab, E, T, F, Ja, Jb, Ra, Rb,
+  Na, Nb, V, Y, Ga, Gb, Gc, Gd — every alg round-trip-tested).
 * **True LBL `BeginnerSolver3x3`** — auto-solve a user's cube using the
   same step-by-step beginner method the tutorial teaches. The current
   solver is Kociemba (efficient but cryptic 22-move solutions); a true
