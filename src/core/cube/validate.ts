@@ -9,6 +9,11 @@ export interface ValidationError {
     | 'bad_count'
     | 'bad_centers'
     | 'unsolvable_parity';
+  /** Translation key, e.g. 'validate.wrongLength'. */
+  key: string;
+  /** Substitution params for placeholders in the translation. */
+  params?: Record<string, string | number>;
+  /** English fallback message; useful for tests / debug. */
   message: string;
 }
 
@@ -23,6 +28,8 @@ export function validateFacelets(size: CubeSize, facelets: string): ValidationEr
   if (facelets.length !== expected) {
     errors.push({
       code: 'wrong_length',
+      key: 'validate.wrongLength',
+      params: { expected, got: facelets.length },
       message: `Expected ${expected} stickers, got ${facelets.length}.`,
     });
     return errors;
@@ -31,7 +38,12 @@ export function validateFacelets(size: CubeSize, facelets: string): ValidationEr
   const counts: Record<string, number> = {};
   for (const ch of facelets) {
     if (!URFDLB.includes(ch as FaceLetter)) {
-      errors.push({ code: 'unknown_char', message: `Unknown sticker color "${ch}".` });
+      errors.push({
+        code: 'unknown_char',
+        key: 'validate.unknownChar',
+        params: { ch },
+        message: `Unknown sticker color "${ch}".`,
+      });
       return errors;
     }
     counts[ch] = (counts[ch] ?? 0) + 1;
@@ -41,6 +53,8 @@ export function validateFacelets(size: CubeSize, facelets: string): ValidationEr
     if (counts[f] !== perFace) {
       errors.push({
         code: 'bad_count',
+        key: 'validate.badCount',
+        params: { f, got: counts[f] ?? 0, expected: perFace },
         message: `Color "${f}" appears ${counts[f] ?? 0} times, expected ${perFace}.`,
       });
     }
@@ -55,6 +69,8 @@ export function validateFacelets(size: CubeSize, facelets: string): ValidationEr
       if (center !== f) {
         errors.push({
           code: 'bad_centers',
+          key: 'validate.badCenters',
+          params: { f, got: center ?? '?' },
           message: `${f} face centre should be "${f}" but is "${center}". Centers determine face identity.`,
         });
       }

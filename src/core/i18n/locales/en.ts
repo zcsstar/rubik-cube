@@ -1,0 +1,129 @@
+import type { Messages } from '../types';
+
+export const en: Messages = {
+  // App chrome
+  'app.title': 'Cubist',
+  'app.tagline': 'Solve any cube. Learn the patterns.',
+  'app.lead':
+    'Drop in your cube state, get a clean step-by-step solution, and learn the beginner methods at your own pace. Free, in your browser, no sign-up.',
+  'app.footer.line': "Cubist · Rubik's Cube Solver · Cheez @{year}",
+
+  // Navigation
+  'nav.solve': 'Solve',
+  'nav.learn': 'Learn',
+  'nav.cube2': '2×2',
+  'nav.cube3': '3×3',
+  'nav.cube4': '4×4',
+  'nav.language': 'Language',
+
+  // Home page
+  'home.cta.solve': 'Solve my cube',
+  'home.cta.learn': 'Learn step-by-step',
+  'home.section.pick': 'Pick your cube',
+  'home.cube2.title': '2×2 Pocket cube',
+  'home.cube2.description': 'Eight corners, no centres. The easiest cube to learn — perfect first step.',
+  'home.cube3.title': '3×3 Classic cube',
+  'home.cube3.description': "The original Rubik's cube. The full beginner method in seven short steps.",
+  'home.cube4.title': '4×4 Revenge',
+  'home.cube4.description': 'Reduction-method solver and tutorial coming soon.',
+  'home.cube4.badge': 'Soon',
+  'home.btn.solve': 'Solve',
+  'home.btn.learn': 'Learn',
+  'home.btn.comingSoon': 'Coming soon',
+
+  // Solver page
+  'solve.page2.title': 'Solve a 2×2',
+  'solve.page2.description': 'Pocket cube — solved by embedding into a 3×3 corner-only state.',
+  'solve.page3.title': 'Solve a 3×3',
+  'solve.page3.description': 'Kociemba two-phase solver — solutions in 22 moves or fewer.',
+  'solve.page4.title': '4×4 — coming soon',
+  'solve.page4.description':
+    'Reduction-method solver is on the roadmap. The architecture supports it as a drop-in addition; only Cube4x4 and Solver4x4Reduction need filling in.',
+  'solve.btn.scramble': 'Scramble',
+  'solve.btn.paint': 'Paint my cube',
+  'solve.btn.camera': 'Use camera',
+  'solve.btn.solve': 'Solve',
+  'solve.btn.solving': 'Solving…',
+  'solve.btn.reset': 'Reset',
+  'solve.howItWorks': 'How it works',
+  'solve.step1': 'Press <b>Scramble</b> for a random cube, or <b>Paint my cube</b> to enter your own.',
+  'solve.step2': 'Press <b>Solve</b> to compute a solution.',
+  'solve.step3': 'Watch the moves play, or step through them one at a time.',
+  'solve.prompt.initial': 'Scramble or paint a cube, then press Solve.',
+  'solve.prompt.solving': 'Computing solution…',
+
+  // Player / StepViewer
+  'player.title': 'Solution',
+  'player.title.walk': 'Walk through the moves',
+  'player.nextMove': 'Next move',
+  'player.solved': 'Solved! 🎉',
+  'player.btn.play': 'Play',
+  'player.btn.pause': 'Pause',
+  'player.btn.finished': 'Finished',
+  'player.aria.reset': 'Reset to start',
+  'player.aria.prev': 'Previous step',
+  'player.aria.next': 'Next step',
+  'player.step': 'Step',
+
+  // ColorInputNet
+  'paint.title': 'Paint your cube',
+  'paint.instruction': 'Pick a colour, then click stickers to paint.',
+  'paint.centersFixed': 'Centres are fixed by face identity.',
+  'paint.btn.reset': 'Reset',
+  'paint.btn.use': 'Use this state',
+  'paint.btn.cancel': 'Cancel',
+  'paint.valid': 'Looks valid — ready to solve.',
+  'paint.colour': 'colour',
+
+  // Validation messages
+  'validate.wrongLength': 'Expected {expected} stickers, got {got}.',
+  'validate.unknownChar': 'Unknown sticker color "{ch}".',
+  'validate.badCount': 'Color "{f}" appears {got} times, expected {expected}.',
+  'validate.badCenters': '{f} face centre should be "{f}" but is "{got}". Centers determine face identity.',
+
+  // Move descriptions
+  'move.dir.cw': 'clockwise',
+  'move.dir.ccw': 'counter-clockwise',
+  'move.dir.half': 'halfway around (180°)',
+  'move.turn90': '90° turn',
+  'move.turn180': '180° turn',
+  'move.description': 'Turn the {face} side {direction}.',
+  'move.face.U': 'top',
+  'move.face.D': 'bottom',
+  'move.face.L': 'left',
+  'move.face.R': 'right',
+  'move.face.F': 'front',
+  'move.face.B': 'back',
+
+  // Camera
+  'camera.title': 'Capture your cube',
+  'camera.hint': 'Hold one face flat in front of the camera and tap Capture. Repeat for all six faces.',
+  'camera.permissionDenied':
+    'Camera permission denied. Use the paint mode instead, or enable camera access in your browser settings.',
+  'camera.unsupported': 'Your browser does not support camera access.',
+  'camera.face.U': 'White face (top)',
+  'camera.face.D': 'Yellow face (bottom)',
+  'camera.face.F': 'Green face (front)',
+  'camera.face.B': 'Blue face (back)',
+  'camera.face.R': 'Red face (right)',
+  'camera.face.L': 'Orange face (left)',
+  'camera.btn.capture': 'Capture',
+  'camera.btn.retake': 'Retake',
+  'camera.btn.next': 'Next face',
+  'camera.btn.done': 'Use this cube',
+  'camera.btn.cancel': 'Cancel',
+  'camera.facing.environment': 'Switch to front camera',
+  'camera.facing.user': 'Switch to back camera',
+  'camera.faceCount': 'Face {n} of 6',
+
+  // Tutorial
+  'tutorial.step': 'Step',
+  'tutorial.casesInStep': 'Cases in this step',
+  'tutorial.btn.resetCase': 'Reset case',
+  'tutorial.algorithmLabel': 'Algorithm',
+
+  // 404
+  'notfound.title': 'Page not found',
+  'notfound.body': "That route doesn't exist (yet). The 4×4 solver is on its way.",
+  'notfound.home': 'Go home',
+};

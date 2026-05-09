@@ -1,0 +1,128 @@
+import type { Messages } from '../types';
+
+export const zh: Messages = {
+  // App chrome
+  'app.title': 'Cubist',
+  'app.tagline': '解开任何魔方,学会其中规律。',
+  'app.lead':
+    '输入你的魔方状态,获取清晰的逐步解法,按自己的节奏学习入门方法。免费、浏览器内运行、无需注册。',
+  'app.footer.line': 'Cubist · 魔方解法工具 · Cheez @{year}',
+
+  // Navigation
+  'nav.solve': '解法',
+  'nav.learn': '学习',
+  'nav.cube2': '二阶',
+  'nav.cube3': '三阶',
+  'nav.cube4': '四阶',
+  'nav.language': '语言',
+
+  // Home page
+  'home.cta.solve': '解我的魔方',
+  'home.cta.learn': '一步一步学',
+  'home.section.pick': '选择你的魔方',
+  'home.cube2.title': '二阶 口袋魔方',
+  'home.cube2.description': '只有八个角块,没有中心块。最容易上手的入门魔方。',
+  'home.cube3.title': '三阶 经典魔方',
+  'home.cube3.description': '最经典的三阶魔方。完整入门方法只需七个短步骤。',
+  'home.cube4.title': '四阶 复仇者',
+  'home.cube4.description': '降阶法解法和教程即将上线。',
+  'home.cube4.badge': '即将推出',
+  'home.btn.solve': '解开',
+  'home.btn.learn': '学习',
+  'home.btn.comingSoon': '即将推出',
+
+  // Solver page
+  'solve.page2.title': '解二阶魔方',
+  'solve.page2.description': '口袋魔方 — 通过映射到三阶角块状态来求解。',
+  'solve.page3.title': '解三阶魔方',
+  'solve.page3.description': 'Kociemba 两阶段算法 — 22 步内还原。',
+  'solve.page4.title': '四阶魔方 — 即将推出',
+  'solve.page4.description':
+    '降阶法解法在路线图中。架构已支持随插即用;只需补充 Cube4x4 和 Solver4x4Reduction。',
+  'solve.btn.scramble': '随机打乱',
+  'solve.btn.paint': '手动填色',
+  'solve.btn.camera': '相机识别',
+  'solve.btn.solve': '开始求解',
+  'solve.btn.solving': '正在求解…',
+  'solve.btn.reset': '重置',
+  'solve.howItWorks': '使用方法',
+  'solve.step1': '按 <b>随机打乱</b> 生成一个魔方,或按 <b>手动填色</b> 输入你自己的魔方。',
+  'solve.step2': '按 <b>开始求解</b> 计算解法。',
+  'solve.step3': '观看动画演示,或一步一步地查看每一步。',
+  'solve.prompt.initial': '先打乱或填色,然后按求解。',
+  'solve.prompt.solving': '正在计算解法…',
+
+  // Player / StepViewer
+  'player.title': '解法',
+  'player.title.walk': '逐步演示',
+  'player.nextMove': '下一步',
+  'player.solved': '完成! 🎉',
+  'player.btn.play': '播放',
+  'player.btn.pause': '暂停',
+  'player.btn.finished': '已结束',
+  'player.aria.reset': '回到开头',
+  'player.aria.prev': '上一步',
+  'player.aria.next': '下一步',
+  'player.step': '步骤',
+
+  // ColorInputNet
+  'paint.title': '为你的魔方填色',
+  'paint.instruction': '先选一种颜色,再点击格子上色。',
+  'paint.centersFixed': '中心块已固定为该面颜色。',
+  'paint.btn.reset': '重置',
+  'paint.btn.use': '使用此状态',
+  'paint.btn.cancel': '取消',
+  'paint.valid': '看起来没问题 — 可以求解了。',
+  'paint.colour': '颜色',
+
+  // Validation
+  'validate.wrongLength': '应有 {expected} 个色块,实际是 {got} 个。',
+  'validate.unknownChar': '未识别的颜色 "{ch}"。',
+  'validate.badCount': '颜色 "{f}" 出现了 {got} 次,应当是 {expected} 次。',
+  'validate.badCenters': '{f} 面中心应该是 "{f}",但显示的是 "{got}"。中心决定面的颜色。',
+
+  // Move descriptions
+  'move.dir.cw': '顺时针',
+  'move.dir.ccw': '逆时针',
+  'move.dir.half': '旋转半圈 (180°)',
+  'move.turn90': '90° 转动',
+  'move.turn180': '180° 转动',
+  'move.description': '将{face}面{direction}转动。',
+  'move.face.U': '顶',
+  'move.face.D': '底',
+  'move.face.L': '左',
+  'move.face.R': '右',
+  'move.face.F': '前',
+  'move.face.B': '后',
+
+  // Camera
+  'camera.title': '相机扫描你的魔方',
+  'camera.hint': '将一个面正对相机,然后点击拍摄。重复六次,扫描所有面。',
+  'camera.permissionDenied': '未授予相机权限。请使用手动填色,或在浏览器设置中开启相机访问。',
+  'camera.unsupported': '你的浏览器不支持相机访问。',
+  'camera.face.U': '白色面 (顶)',
+  'camera.face.D': '黄色面 (底)',
+  'camera.face.F': '绿色面 (前)',
+  'camera.face.B': '蓝色面 (后)',
+  'camera.face.R': '红色面 (右)',
+  'camera.face.L': '橙色面 (左)',
+  'camera.btn.capture': '拍摄',
+  'camera.btn.retake': '重拍',
+  'camera.btn.next': '下一面',
+  'camera.btn.done': '使用此魔方',
+  'camera.btn.cancel': '取消',
+  'camera.facing.environment': '切换到前置摄像头',
+  'camera.facing.user': '切换到后置摄像头',
+  'camera.faceCount': '第 {n} 面,共 6 面',
+
+  // Tutorial
+  'tutorial.step': '步骤',
+  'tutorial.casesInStep': '本步骤的图形',
+  'tutorial.btn.resetCase': '重置案例',
+  'tutorial.algorithmLabel': '口诀',
+
+  // 404
+  'notfound.title': '页面未找到',
+  'notfound.body': '该路径暂不存在。四阶解法即将上线。',
+  'notfound.home': '回到首页',
+};

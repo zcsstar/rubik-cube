@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import type { CubeSize } from '@core/cube/ICube';
 import { faceOffset, stickersPerFace, totalStickers, URFDLB } from '@core/cube/ICube';
 import type { FaceLetter } from '@core/cube/colors';
-import { FACE_COLORS, FACE_NAMES } from '@core/cube/colors';
+import { FACE_COLORS } from '@core/cube/colors';
 import { validateFacelets } from '@core/cube/validate';
 import { Check, X } from 'lucide-react';
+import { useI18n } from '@ui/i18n/I18nProvider';
 
 export interface ColorInputNetProps {
   size: CubeSize;
@@ -20,6 +21,7 @@ function solvedFacelets(size: CubeSize): string {
 }
 
 export function ColorInputNet({ size, initial, onSubmit, onCancel }: ColorInputNetProps) {
+  const { t } = useI18n();
   const [facelets, setFacelets] = useState(() => initial ?? solvedFacelets(size));
   const [paint, setPaint] = useState<FaceLetter>('U');
 
@@ -40,9 +42,9 @@ export function ColorInputNet({ size, initial, onSubmit, onCancel }: ColorInputN
     <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
       <header className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Paint your cube</h3>
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t('paint.title')}</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Pick a colour, then click stickers to paint. {size === 3 && 'Centres are fixed by face identity.'}
+            {t('paint.instruction')} {size === 3 && t('paint.centersFixed')}
           </p>
         </div>
         <button
@@ -50,11 +52,10 @@ export function ColorInputNet({ size, initial, onSubmit, onCancel }: ColorInputN
           onClick={() => setFacelets(solvedFacelets(size))}
           className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
         >
-          Reset
+          {t('paint.btn.reset')}
         </button>
       </header>
 
-      {/* Colour palette */}
       <div className="flex flex-wrap items-center gap-2">
         {URFDLB.map((f) => {
           const selected = paint === f;
@@ -63,14 +64,14 @@ export function ColorInputNet({ size, initial, onSubmit, onCancel }: ColorInputN
               key={f}
               type="button"
               onClick={() => setPaint(f)}
-              title={`${FACE_NAMES[f]} colour`}
+              title={`${t(`move.face.${f}`)} ${t('paint.colour')}`}
               className={
                 'flex h-8 w-12 items-center justify-center rounded-md border text-xs font-semibold transition ' +
                 (selected
                   ? 'border-slate-900 ring-2 ring-indigo-300 dark:border-slate-100'
                   : 'border-slate-200 dark:border-slate-700')
               }
-              style={{ backgroundColor: FACE_COLORS[f], color: f === 'U' ? '#000' : '#000' }}
+              style={{ backgroundColor: FACE_COLORS[f], color: '#000' }}
             >
               {f}
             </button>
@@ -78,20 +79,18 @@ export function ColorInputNet({ size, initial, onSubmit, onCancel }: ColorInputN
         })}
       </div>
 
-      {/* Cross-net layout */}
       <NetLayout size={N} facelets={facelets} paint={paint} onPaint={setSticker} />
 
-      {/* Validation summary */}
       {valid ? (
         <div className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200">
-          <Check size={14} /> Looks valid — ready to solve.
+          <Check size={14} /> {t('paint.valid')}
         </div>
       ) : (
         <ul className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">
           {errors.slice(0, 3).map((err, i) => (
             <li key={i} className="flex items-start gap-2">
               <X size={14} className="mt-0.5 shrink-0" />
-              <span>{err.message}</span>
+              <span>{t(err.key, err.params)}</span>
             </li>
           ))}
         </ul>
@@ -104,7 +103,7 @@ export function ColorInputNet({ size, initial, onSubmit, onCancel }: ColorInputN
           disabled={!valid}
           className="flex-1 rounded-md bg-indigo-500 px-3 py-2 text-sm font-medium text-white shadow-sm enabled:hover:bg-indigo-600 disabled:opacity-50"
         >
-          Use this state
+          {t('paint.btn.use')}
         </button>
         {onCancel && (
           <button
@@ -112,7 +111,7 @@ export function ColorInputNet({ size, initial, onSubmit, onCancel }: ColorInputN
             onClick={onCancel}
             className="rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            Cancel
+            {t('paint.btn.cancel')}
           </button>
         )}
       </div>
@@ -121,7 +120,7 @@ export function ColorInputNet({ size, initial, onSubmit, onCancel }: ColorInputN
 }
 
 /**
- * Cross-net layout of the cube. Faces in a 4×3 grid with the standard
+ * Cross-net layout of the cube. Faces in a 4×3 grid:
  *
  *     . U . .
  *     L F R B
@@ -138,6 +137,7 @@ function NetLayout({
   paint: FaceLetter;
   onPaint: (absIndex: number, color: FaceLetter) => void;
 }) {
+  const { t } = useI18n();
   const renderFace = (face: FaceLetter) => {
     const off = faceOffset(size, face);
     return (
@@ -148,7 +148,7 @@ function NetLayout({
           gridTemplateColumns: `repeat(${size}, 1fr)`,
           gridTemplateRows: `repeat(${size}, 1fr)`,
         }}
-        aria-label={`${FACE_NAMES[face]} face`}
+        aria-label={t(`move.face.${face}`)}
       >
         {Array.from({ length: size * size }, (_, i) => {
           const abs = off + i;
@@ -165,7 +165,6 @@ function NetLayout({
                 'aspect-square rounded-sm border border-slate-300 transition disabled:cursor-not-allowed disabled:opacity-95 dark:border-slate-700 ' +
                 (isCentre ? '' : 'hover:scale-105 hover:shadow-md')
               }
-              aria-label={`${face} sticker ${i}, currently ${letter}`}
             />
           );
         })}
@@ -173,8 +172,6 @@ function NetLayout({
     );
   };
 
-  // Grid placement: U at row1 col2, L F R B in row2 cols 1..4, D at row3 col2.
-  // Use Tailwind explicit grid coordinates.
   const facePos: Partial<Record<FaceLetter, string>> = {
     U: 'col-start-2 row-start-1',
     L: 'col-start-1 row-start-2',
@@ -194,4 +191,4 @@ function NetLayout({
   );
 }
 
-void totalStickers; // keep import resolved without lint warning
+void totalStickers;

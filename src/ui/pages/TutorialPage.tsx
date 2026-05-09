@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Tutorial, TutorialCase } from '@core/tutorials/ITutorial';
+import { getTutorial } from '@core/tutorials';
 import { parseMoves, invertMoves } from '@core/cube/moves';
 import { CubeViewer3D } from '@ui/components/CubeViewer3D/CubeViewer3D';
 import { CubeMiniNet } from '@ui/components/CubeMiniNet/CubeMiniNet';
@@ -9,9 +10,10 @@ import { useAlgorithmPlayer } from '@ui/hooks/useAlgorithmPlayer';
 import { Cube2x2 } from '@core/cube/Cube2x2';
 import { Cube3x3 } from '@core/cube/Cube3x3';
 import type { ICube, CubeSize } from '@core/cube/ICube';
+import { useI18n } from '@ui/i18n/I18nProvider';
 
 export interface TutorialPageProps {
-  tutorial: Tutorial;
+  size: CubeSize;
 }
 
 function newSolved(size: CubeSize): ICube {
@@ -20,9 +22,36 @@ function newSolved(size: CubeSize): ICube {
   throw new Error(`Unsupported size: ${size}`);
 }
 
-export function TutorialPage({ tutorial }: TutorialPageProps) {
+export function TutorialPage({ size }: TutorialPageProps) {
+  const { locale, t } = useI18n();
+  const tutorial = getTutorial(size, locale);
+
+  if (!tutorial) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-20 text-center">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">
+          {t('notfound.title')}
+        </h1>
+      </div>
+    );
+  }
+
+  return <TutorialBody tutorial={tutorial} />;
+}
+
+function TutorialBody({ tutorial }: { tutorial: Tutorial }) {
+  const { t } = useI18n();
   const [stepId, setStepId] = useState<string>(() => tutorial.steps[0]!.id);
   const [caseId, setCaseId] = useState<string>(() => tutorial.steps[0]!.cases[0]!.id);
+
+  // When tutorial swaps (e.g., locale change), re-anchor to the equivalent
+  // step/case ids — they're stable across locales by design.
+  useEffect(() => {
+    if (!tutorial.steps.find((s) => s.id === stepId)) {
+      setStepId(tutorial.steps[0]!.id);
+      setCaseId(tutorial.steps[0]!.cases[0]!.id);
+    }
+  }, [tutorial, stepId]);
 
   const step = tutorial.steps.find((s) => s.id === stepId) ?? tutorial.steps[0]!;
   const activeCase = step.cases.find((c) => c.id === caseId) ?? step.cases[0]!;
@@ -49,7 +78,7 @@ export function TutorialPage({ tutorial }: TutorialPageProps) {
       <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-indigo-500">
-            Step {step.number}
+            {t('tutorial.step')} {step.number}
           </div>
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">{step.title}</h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{step.goal}</p>
@@ -69,7 +98,7 @@ export function TutorialPage({ tutorial }: TutorialPageProps) {
       {step.cases.length > 1 && (
         <section>
           <h3 className="mb-2 text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-200">
-            Cases in this step
+            {t('tutorial.casesInStep')}
           </h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {step.cases.map((c) => (
@@ -166,6 +195,7 @@ function CaseCard({
 }
 
 function CaseDemo({ caseData, size }: { caseData: TutorialCase; size: CubeSize }) {
+  const { t } = useI18n();
   const algorithm = useMemo(() => parseMoves(caseData.algorithm), [caseData.algorithm]);
   const setup = useMemo(
     () => (caseData.setup ? parseMoves(caseData.setup) : invertMoves(algorithm)),
@@ -191,7 +221,7 @@ function CaseDemo({ caseData, size }: { caseData: TutorialCase; size: CubeSize }
             onClick={player.reset}
             className="rounded-md border border-slate-200 px-3 py-1.5 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
           >
-            Reset case
+            {t('tutorial.btn.resetCase')}
           </button>
           {caseData.recognition && (
             <p className="text-xs italic text-slate-500 dark:text-slate-400">{caseData.recognition}</p>
@@ -202,7 +232,7 @@ function CaseDemo({ caseData, size }: { caseData: TutorialCase; size: CubeSize }
       <div className="flex flex-col gap-3">
         <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-3 dark:border-indigo-900 dark:bg-indigo-950/30">
           <div className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
-            Algorithm
+            {t('tutorial.algorithmLabel')}
           </div>
           <div className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-50">
             {caseData.name}
@@ -221,7 +251,7 @@ function CaseDemo({ caseData, size }: { caseData: TutorialCase; size: CubeSize }
           animating={!!player.animating}
           onStepChange={player.requestStep}
           onPlayingChange={player.setPlaying}
-          title="Walk through the moves"
+          titleKey="player.title.walk"
         />
       </div>
     </section>

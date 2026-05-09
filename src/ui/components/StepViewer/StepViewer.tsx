@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw } from 'lucide-react'
 import { useEffect } from 'react';
 import type { Move } from '@core/cube/moves';
 import { MoveCard } from '@ui/components/MoveCard/MoveCard';
+import { useI18n } from '@ui/i18n/I18nProvider';
 
 export interface PhaseSpec {
   /** Move index where this phase starts (inclusive). */
@@ -22,7 +23,8 @@ export interface StepViewerProps {
   animating: boolean;
   /** Optional phase markers — must be sorted by `start`. */
   phases?: readonly PhaseSpec[];
-  title?: string;
+  /** Translation key for the panel title. Defaults to 'player.title'. */
+  titleKey?: string;
   onStepChange: (step: number) => void;
   onPlayingChange: (playing: boolean) => void;
   /** Pause between auto-advanced moves in ms (in addition to animation time). */
@@ -45,11 +47,12 @@ export function StepViewer({
   playing,
   animating,
   phases,
-  title = 'Solution',
+  titleKey = 'player.title',
   onStepChange,
   onPlayingChange,
   pauseMs = 250,
 }: StepViewerProps) {
+  const { t } = useI18n();
   const totalSteps = moves.length;
 
   // Auto-advance: while playing and not animating, after pauseMs, advance one step.
@@ -75,7 +78,7 @@ export function StepViewer({
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-200">{title}</h3>
+        <h3 className="text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-200">{t(titleKey)}</h3>
         <span className="font-mono text-xs text-slate-500">
           {currentStep} / {totalSteps}
         </span>
@@ -83,7 +86,7 @@ export function StepViewer({
 
       {phase && (
         <div className="rounded-md bg-indigo-50 px-3 py-2 text-sm dark:bg-indigo-950/50">
-          <div className="font-medium text-indigo-700 dark:text-indigo-200">Step: {phase.name}</div>
+          <div className="font-medium text-indigo-700 dark:text-indigo-200">{t('player.step')}: {phase.name}</div>
           {phase.hint && (
             <div className="text-xs text-indigo-600/80 dark:text-indigo-300/80">{phase.hint}</div>
           )}
@@ -93,13 +96,13 @@ export function StepViewer({
       {upcomingMove ? (
         <div>
           <div className="mb-1 text-xs font-medium uppercase tracking-wider text-slate-400">
-            Next move
+            {t('player.nextMove')}
           </div>
           <MoveCard move={upcomingMove} variant="large" />
         </div>
       ) : (
         <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 text-center text-sm font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200">
-          Solved! 🎉
+          {t('player.solved')}
         </div>
       )}
 
@@ -123,7 +126,7 @@ export function StepViewer({
           type="button"
           onClick={() => onStepChange(0)}
           disabled={atStart && !playing}
-          aria-label="Reset to start"
+          aria-label={t('player.aria.reset')}
           className="rounded-md border border-slate-200 p-2 text-slate-600 enabled:hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:bg-slate-800"
         >
           <RotateCcw size={16} />
@@ -132,7 +135,7 @@ export function StepViewer({
           type="button"
           onClick={() => onStepChange(currentStep - 1)}
           disabled={atStart}
-          aria-label="Previous step"
+          aria-label={t('player.aria.prev')}
           className="rounded-md border border-slate-200 p-2 text-slate-600 enabled:hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:bg-slate-800"
         >
           <ChevronLeft size={16} />
@@ -144,13 +147,13 @@ export function StepViewer({
           className="flex flex-1 items-center justify-center gap-2 rounded-md bg-indigo-500 px-3 py-2 text-sm font-medium text-white shadow-sm enabled:hover:bg-indigo-600 disabled:opacity-40"
         >
           {playing ? <Pause size={16} /> : <Play size={16} />}
-          {playing ? 'Pause' : atEnd ? 'Finished' : 'Play'}
+          {playing ? t('player.btn.pause') : atEnd ? t('player.btn.finished') : t('player.btn.play')}
         </button>
         <button
           type="button"
           onClick={() => onStepChange(currentStep + 1)}
           disabled={atEnd}
-          aria-label="Next step"
+          aria-label={t('player.aria.next')}
           className="rounded-md border border-slate-200 p-2 text-slate-600 enabled:hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:bg-slate-800"
         >
           <ChevronRight size={16} />

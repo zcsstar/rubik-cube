@@ -1,7 +1,9 @@
 import type { Move } from '@core/cube/moves';
 import { moveToString } from '@core/cube/moves';
 import type { FaceLetter } from '@core/cube/colors';
-import { FACE_COLORS, FACE_NAMES } from '@core/cube/colors';
+import { FACE_COLORS } from '@core/cube/colors';
+import type { TranslateFn } from '@core/i18n';
+import { useI18n } from '@ui/i18n/I18nProvider';
 
 export interface MoveCardProps {
   move: Move;
@@ -15,19 +17,19 @@ export interface MoveCardProps {
 }
 
 /**
- * Plain-English description for a face turn. Designed for kids: avoids cubing
- * jargon and uses everyday words ("the right side", "halfway", "clockwise").
+ * Plain-English (or plain-Chinese) description for a face turn. Designed for
+ * kids: avoids cubing jargon and uses everyday words ("the right side",
+ * "halfway", "clockwise").
  */
-export function describeMove(move: Move): string {
-  const faceName = FACE_NAMES[move.face].toLowerCase();
-  const article = move.face === 'U' || move.face === 'D' ? 'the' : 'the';
+export function describeMove(move: Move, t: TranslateFn): string {
+  const face = t(`move.face.${move.face}`);
   const direction =
     move.modifier === '2'
-      ? 'halfway around (180°)'
+      ? t('move.dir.half')
       : move.modifier === "'"
-        ? 'counter-clockwise'
-        : 'clockwise';
-  return `Turn ${article} ${faceName} side ${direction}.`;
+        ? t('move.dir.ccw')
+        : t('move.dir.cw');
+  return t('move.description', { face, direction });
 }
 
 /**
@@ -114,6 +116,7 @@ function FaceArrowIcon({
 }
 
 export function MoveCard({ move, variant = 'small', done, active, onClick }: MoveCardProps) {
+  const { t } = useI18n();
   const notation = moveToString(move);
   if (variant === 'large') {
     return (
@@ -125,10 +128,10 @@ export function MoveCard({ move, variant = 'small', done, active, onClick }: Mov
               {notation}
             </span>
             <span className="text-sm text-slate-500">
-              {move.modifier === '2' ? '180° turn' : '90° turn'}
+              {move.modifier === '2' ? t('move.turn180') : t('move.turn90')}
             </span>
           </div>
-          <p className="text-sm text-slate-700 dark:text-slate-200">{describeMove(move)}</p>
+          <p className="text-sm text-slate-700 dark:text-slate-200">{describeMove(move, t)}</p>
         </div>
       </div>
     );
@@ -138,7 +141,7 @@ export function MoveCard({ move, variant = 'small', done, active, onClick }: Mov
     <button
       type="button"
       onClick={onClick}
-      title={describeMove(move)}
+      title={describeMove(move, t)}
       className={
         'flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-sm transition ' +
         (done
