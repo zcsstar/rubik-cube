@@ -10,7 +10,8 @@ Phase 3 wraps it in Capacitor for iOS/Android.
 | ---------------------------------------- | --------------- |
 | 3×3 solver (Kociemba)                    | ✅ ready        |
 | 2×2 solver (3×3 corner-only embedding)   | ✅ ready        |
-| 4×4 solver                               | ⏳ stub page; reduction-method solver pending |
+| 4×4 cube model (`Cube4x4`)               | ✅ ready (96-sticker state, programmatic permutation generator handles outer + wide + slice + rotation moves; round-trip tested over 200 random sequences) |
+| 4×4 reduction solver                     | ⏳ pending (centres → edges → 3×3) |
 | 3D cube viewer (rotatable)               | ✅ ready        |
 | Animated slice rotation per move         | ✅ ready        |
 | Visual `MoveCard` (face icon + arrow + plain-English) | ✅ ready |
