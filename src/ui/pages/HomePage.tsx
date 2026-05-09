@@ -1,35 +1,41 @@
 import { Link } from 'react-router-dom';
-import { Sparkles, Shuffle, BookOpen } from 'lucide-react';
+import { Sparkles, GraduationCap, Lock } from 'lucide-react';
+import type { CubeSize } from '@core/cube/ICube';
 import { Cube3x3 } from '@core/cube/Cube3x3';
 import { CubeViewer3D } from '@ui/components/CubeViewer3D/CubeViewer3D';
 
-const cards = [
+interface CubeOffer {
+  size: CubeSize;
+  title: string;
+  description: string;
+  /** When true, both actions are disabled. */
+  disabled?: boolean;
+  /** When true, only the Solve action is available. */
+  solveOnly?: boolean;
+  badge?: string;
+}
+
+const cubeOffers: CubeOffer[] = [
   {
-    title: 'Solve a 3×3',
-    description: 'Scramble or paint your cube and get step-by-step moves.',
-    href: '/solve/3',
-    icon: Sparkles,
-    primary: true,
+    size: 2,
+    title: '2×2 Pocket cube',
+    description: 'Eight corners, no centres. The easiest cube to learn — perfect first step.',
   },
   {
-    title: 'Solve a 2×2',
-    description: 'Pocket cube — fast, beginner-friendly solutions.',
-    href: '/solve/2',
-    icon: Shuffle,
-    primary: false,
+    size: 3,
+    title: '3×3 Classic cube',
+    description: 'The original Rubik\'s cube. The full beginner method in seven short steps.',
   },
   {
-    title: 'Solve a 4×4',
-    description: 'Coming soon — reduction-method solver in development.',
-    href: '/solve/4',
-    icon: BookOpen,
-    primary: false,
+    size: 4,
+    title: '4×4 Revenge',
+    description: 'Reduction-method solver and tutorial coming soon.',
     disabled: true,
+    badge: 'Soon',
   },
 ];
 
 export function HomePage() {
-  // Show a static, slowly-rotated solved 3x3 as visual hero.
   const heroFacelets = Cube3x3.solved().toFaceletString();
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-10 px-4 py-10">
@@ -48,13 +54,13 @@ export function HomePage() {
               to="/solve/3"
               className="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-600"
             >
-              Try the 3×3 solver
+              Solve my cube
             </Link>
             <Link
-              to="/solve/2"
+              to="/learn/3"
               className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              Try the 2×2 solver
+              Learn step-by-step
             </Link>
           </div>
         </div>
@@ -63,35 +69,62 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map((card) => {
-          const Icon = card.icon;
-          const inner = (
-            <div
-              className={
-                'flex h-full flex-col gap-2 rounded-xl border p-4 transition ' +
-                (card.disabled
-                  ? 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-60 dark:border-slate-800 dark:bg-slate-900'
-                  : card.primary
-                    ? 'border-indigo-200 bg-indigo-50/40 hover:bg-indigo-50 dark:border-indigo-900 dark:bg-indigo-950/40 dark:hover:bg-indigo-950'
-                    : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800')
-              }
-            >
-              <Icon size={20} className="text-indigo-500" />
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                {card.title}
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300">{card.description}</p>
-            </div>
-          );
-          if (card.disabled) return <div key={card.title}>{inner}</div>;
-          return (
-            <Link key={card.title} to={card.href}>
-              {inner}
-            </Link>
-          );
-        })}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Pick your cube</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {cubeOffers.map((offer) => (
+            <CubeCard key={offer.size} offer={offer} />
+          ))}
+        </div>
       </section>
+    </div>
+  );
+}
+
+function CubeCard({ offer }: { offer: CubeOffer }) {
+  const { size, title, description, disabled, solveOnly, badge } = offer;
+  return (
+    <div
+      className={
+        'flex h-full flex-col gap-3 rounded-xl border p-4 transition ' +
+        (disabled
+          ? 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900'
+          : 'border-slate-200 bg-white hover:border-indigo-200 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-900')
+      }
+    >
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+        {badge && (
+          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            {badge}
+          </span>
+        )}
+      </div>
+      <p className="flex-1 text-sm text-slate-600 dark:text-slate-300">{description}</p>
+      <div className="flex flex-wrap gap-2">
+        {disabled ? (
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-400 dark:border-slate-700">
+            <Lock size={14} /> Coming soon
+          </span>
+        ) : (
+          <>
+            <Link
+              to={`/solve/${size}`}
+              className="inline-flex items-center gap-1.5 rounded-md bg-indigo-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-600"
+            >
+              <Sparkles size={14} /> Solve
+            </Link>
+            {!solveOnly && (
+              <Link
+                to={`/learn/${size}`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                <GraduationCap size={14} /> Learn
+              </Link>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

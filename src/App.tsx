@@ -1,8 +1,11 @@
 import { Routes, Route, Link, NavLink } from 'react-router-dom';
 import { HomePage } from '@ui/pages/HomePage';
 import { SolvePage } from '@ui/pages/SolvePage';
+import { TutorialPage } from '@ui/pages/TutorialPage';
 import { NotFoundPage } from '@ui/pages/NotFoundPage';
 import { Logo } from '@ui/components/Logo';
+import { tutorial3x3Beginner } from '@core/tutorials/tutorial3x3Beginner';
+import { tutorial2x2Beginner } from '@core/tutorials/tutorial2x2Beginner';
 
 function Layout({ children }: { children: React.ReactNode }) {
   const navLink = ({ isActive }: { isActive: boolean }) =>
@@ -18,16 +21,19 @@ function Layout({ children }: { children: React.ReactNode }) {
             <Logo size={26} />
             <span className="text-base font-semibold tracking-tight">Cubist</span>
           </Link>
-          <nav className="flex items-center gap-1">
-            <NavLink to="/solve/3" className={navLink}>
-              3×3
-            </NavLink>
-            <NavLink to="/solve/2" className={navLink}>
-              2×2
-            </NavLink>
-            <NavLink to="/solve/4" className={navLink} end>
-              4×4
-            </NavLink>
+          <nav className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="flex items-center gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Solve</span>
+              <NavLink to="/solve/2" className={navLink}>2×2</NavLink>
+              <NavLink to="/solve/3" className={navLink}>3×3</NavLink>
+              <NavLink to="/solve/4" className={navLink} end>4×4</NavLink>
+            </span>
+            <span className="hidden h-4 w-px bg-slate-200 sm:inline-block dark:bg-slate-700" />
+            <span className="flex items-center gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Learn</span>
+              <NavLink to="/learn/2" className={navLink}>2×2</NavLink>
+              <NavLink to="/learn/3" className={navLink}>3×3</NavLink>
+            </span>
           </nav>
         </div>
       </header>
@@ -64,6 +70,8 @@ export default function App() {
             </div>
           }
         />
+        <Route path="/learn/3" element={<TutorialPage tutorial={tutorial3x3Beginner} />} />
+        <Route path="/learn/2" element={<TutorialPage tutorial={tutorial2x2Beginner} />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Layout>

@@ -16,8 +16,8 @@ Phase 3 wraps it in Capacitor for iOS/Android.
 | Visual `MoveCard` (face icon + arrow + plain-English) | ✅ ready |
 | Color input — 2D unfolded net painter    | ✅ ready (with sticker-count + centre validation) |
 | Phase analysis (Kociemba two-phase split: Set-up → Finish) | ✅ ready |
-| Stand-alone tutorial pages               | ⏳ pending |
-| True LBL solver (white cross → first layer → … → PLL) | ⏳ pending — Kociemba's solution doesn't pass through LBL milestones, so a separate `BeginnerSolver3x3` is needed for that pedagogical structure |
+| Beginner-method tutorial pages (3×3 LBL, 2×2 Ortega) | ✅ ready at `/learn/3` and `/learn/2` |
+| True LBL solver (auto-solves a user's cube via beginner method) | ⏳ pending — pattern-recognition for ~20 cases across 7 stages; current `Solver3x3Kociemba` is faster, the tutorial pages teach the method |
 | Camera color recognition                 | ⏳ deferred to Phase 2 |
 
 ## Run
@@ -28,6 +28,26 @@ npm run dev          # dev server at http://localhost:5173
 npm test             # vitest
 npm run build        # production static build to dist/
 ```
+
+## Deploy (GitHub Pages)
+
+Push to `main`. The `.github/workflows/deploy.yml` workflow builds the app and
+publishes `dist/` to GitHub Pages. The site lives at
+`https://<owner>.github.io/rubik-cube/`.
+
+How the URL routing works:
+
+* `vite.config.ts` sets `base: '/rubik-cube/'` only when `GITHUB_ACTIONS` is set,
+  so dev still uses relative paths.
+* `main.tsx` passes `import.meta.env.BASE_URL` as `BrowserRouter`'s `basename`,
+  so React Router knows about the prefix.
+* The workflow copies `dist/index.html` to `dist/404.html`. GitHub Pages serves
+  `404.html` for any path it cannot find, which lets a hard-refresh on
+  `/rubik-cube/learn/3` boot the SPA correctly — BrowserRouter then strips the
+  basename and matches the in-app route.
+
+One-time GitHub repo setup before the first deploy: open **Settings → Pages**
+and set **Source = GitHub Actions**. Subsequent deploys are automatic.
 
 ## Architecture
 
