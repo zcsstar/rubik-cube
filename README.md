@@ -1,0 +1,92 @@
+# Cubist — Rubik's Cube Solver & Tutor
+
+Phase 1 (this build) is a static, client-side web app that scrambles a 2×2 or 3×3
+cube and produces a step-by-step solution. Phase 2 is the same app on free hosting.
+Phase 3 wraps it in Capacitor for iOS/Android.
+
+## Status
+
+| Feature                                  | State           |
+| ---------------------------------------- | --------------- |
+| 3×3 solver (Kociemba)                    | ✅ ready        |
+| 2×2 solver (3×3 corner-only embedding)   | ✅ ready        |
+| 4×4 solver                               | ⏳ stub page; reduction-method solver pending |
+| 3D cube viewer (rotatable)               | ✅ ready        |
+| Animated slice rotation per move         | ✅ ready        |
+| Visual `MoveCard` (face icon + arrow + plain-English) | ✅ ready |
+| Color input — 2D unfolded net painter    | ✅ ready (with sticker-count + centre validation) |
+| Phase analysis (Kociemba two-phase split: Set-up → Finish) | ✅ ready |
+| Stand-alone tutorial pages               | ⏳ pending |
+| True LBL solver (white cross → first layer → … → PLL) | ⏳ pending — Kociemba's solution doesn't pass through LBL milestones, so a separate `BeginnerSolver3x3` is needed for that pedagogical structure |
+| Camera color recognition                 | ⏳ deferred to Phase 2 |
+
+## Run
+
+```sh
+npm install
+npm run dev          # dev server at http://localhost:5173
+npm test             # vitest
+npm run build        # production static build to dist/
+```
+
+## Architecture
+
+Strict separation of pure logic (`src/core/`) from React UI (`src/ui/`). UI
+depends only on `core/` interfaces — adding a new cube size or a new solver is
+a new file, no UI edits.
+
+```
+src/
+  core/                       # Pure TS, no React, no DOM
+    cube/      ICube, Cube2x2, Cube3x3, moves, colors, validate
+    solvers/   ISolver, SolverFactory, Solver3x3Kociemba, Solver2x2BFS
+  ui/
+    components/ CubeViewer3D, StepViewer, Logo
+    hooks/      useSolveSession
+    pages/      HomePage, SolvePage, NotFoundPage
+```
+
+### Solver strategy
+
+* **3×3** — wraps `cubejs` (MIT) which implements Kociemba two-phase. Solutions
+  ≤22 moves, ~10–400 ms after a one-time ~1 s pruning-table init.
+* **2×2** — embeds the 24-sticker 2×2 state into a 54-sticker 3×3 state where
+  edges and centres are already solved, then delegates to the 3×3 solver. Same
+  moves apply to the 2×2 because face turns coincide. Solutions are typically
+  12–18 moves; not optimal for 2×2, but always correct and free.
+* **4×4** — `Solver4x4Reduction` is the planned drop-in: pair centres → pair
+  edges → run 3×3 solver with parity fix-ups. Not yet implemented.
+
+### Deferred (Phase 1B / Phase 2)
+
+* Standalone tutorial pages — the solver page already shows live phase labels
+  ("White cross", "Middle-layer edges", …) walking through any solution, so
+  the immediate teaching need is met. Dedicated practice tutorials (try a
+  scramble, attempt the cross, get feedback) are next.
+* `Cube4x4` + `Solver4x4Reduction` — full 4×4 mechanics (96 stickers, wide
+  moves) and the reduction solver.
+* Pure layer-by-layer (LBL) `BeginnerSolver3x3` — currently we run Kociemba
+  for the actual move sequence and *label* milestones after the fact. A true
+  LBL solver would emit longer but pedagogically straighter solutions; out of
+  scope this iteration.
+* Camera-based colour recognition for ColorInputNet.
+
+The architecture deliberately leaves these as drop-in additions: the
+`ICube` / `ISolver` interfaces and the generic `StepViewer` + phase metadata
+already support them.
+
+## Tests
+
+```sh
+npm test
+```
+
+Covers move-application round-trips for both cubes (3×3 via cubejs, 2×2 via
+hand-derived permutation tables verified against (move)⁴ = identity), and
+random-scramble solve round-trips for both solvers.
+
+## License
+
+Code is MIT. All runtime dependencies are MIT-licensed (`cubejs`, `three`,
+`@react-three/fiber`, `@react-three/drei`, `lucide-react`, `react`,
+`react-router`, `@tailwindcss/vite`).
