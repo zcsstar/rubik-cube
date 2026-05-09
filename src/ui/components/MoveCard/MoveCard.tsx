@@ -1,5 +1,5 @@
 import type { Move } from '@core/cube/moves';
-import { moveToString } from '@core/cube/moves';
+import { isFaceLetter, isRotationLetter, isSliceLetter, moveToString } from '@core/cube/moves';
 import type { FaceLetter } from '@core/cube/colors';
 import { FACE_COLORS } from '@core/cube/colors';
 import type { TranslateFn } from '@core/i18n';
@@ -17,19 +17,24 @@ export interface MoveCardProps {
 }
 
 /**
- * Plain-English (or plain-Chinese) description for a face turn. Designed for
- * kids: avoids cubing jargon and uses everyday words ("the right side",
- * "halfway", "clockwise").
+ * Plain-English / plain-Chinese description for a turn. Picks one of three
+ * sentence templates depending on whether the move targets an outer face,
+ * a middle slice (M/E/S) or a whole-cube rotation (x/y/z).
  */
 export function describeMove(move: Move, t: TranslateFn): string {
-  const face = t(`move.face.${move.face}`);
   const direction =
     move.modifier === '2'
       ? t('move.dir.half')
       : move.modifier === "'"
         ? t('move.dir.ccw')
         : t('move.dir.cw');
-  return t('move.description', { face, direction });
+  if (isSliceLetter(move.face)) {
+    return t('move.description.slice', { face: t(`move.slice.${move.face}`), direction });
+  }
+  if (isRotationLetter(move.face)) {
+    return t('move.description.rotation', { face: t(`move.rotation.${move.face}`), direction });
+  }
+  return t('move.description', { face: t(`move.face.${move.face}`), direction });
 }
 
 /**
@@ -37,22 +42,23 @@ export function describeMove(move: Move, t: TranslateFn): string {
  * The arrow flips direction for prime moves, doubles for 180°.
  */
 function FaceArrowIcon({
-  face,
+  target,
   modifier,
   size = 56,
   className,
 }: {
-  face: FaceLetter;
+  target: Move['face'];
   modifier: Move['modifier'];
   size?: number;
   className?: string;
 }) {
-  const color = FACE_COLORS[face];
-  const cw = modifier !== "'"; // ' is CCW; '' and '2' are conceptually CW
+  const color = isFaceLetter(target) ? FACE_COLORS[target as FaceLetter] : '#cbd5e1';
+  const cw = modifier !== "'";
   const isDouble = modifier === '2';
-  // Arrow direction in SVG: clockwise → arrow points right at top.
-  // Use a curved arc inside a rounded square representing the face.
   const stroke = '#0f172a';
+  // Slice / rotation moves don't have a face to highlight; show their letter
+  // in the centre of the icon instead of the 3×3 grid lines.
+  const showLetter = !isFaceLetter(target);
   return (
     <svg
       className={className}
@@ -64,11 +70,27 @@ function FaceArrowIcon({
       aria-hidden="true"
     >
       <rect x="6" y="6" width="52" height="52" rx="8" fill={color} stroke={stroke} strokeWidth="2" />
-      {/* Inner grid lines to suggest a face of a cube */}
-      <line x1="23.3" y1="6" x2="23.3" y2="58" stroke={stroke} strokeOpacity="0.25" strokeWidth="1" />
-      <line x1="40.6" y1="6" x2="40.6" y2="58" stroke={stroke} strokeOpacity="0.25" strokeWidth="1" />
-      <line x1="6" y1="23.3" x2="58" y2="23.3" stroke={stroke} strokeOpacity="0.25" strokeWidth="1" />
-      <line x1="6" y1="40.6" x2="58" y2="40.6" stroke={stroke} strokeOpacity="0.25" strokeWidth="1" />
+      {!showLetter && (
+        <>
+          <line x1="23.3" y1="6" x2="23.3" y2="58" stroke={stroke} strokeOpacity="0.25" strokeWidth="1" />
+          <line x1="40.6" y1="6" x2="40.6" y2="58" stroke={stroke} strokeOpacity="0.25" strokeWidth="1" />
+          <line x1="6" y1="23.3" x2="58" y2="23.3" stroke={stroke} strokeOpacity="0.25" strokeWidth="1" />
+          <line x1="6" y1="40.6" x2="58" y2="40.6" stroke={stroke} strokeOpacity="0.25" strokeWidth="1" />
+        </>
+      )}
+      {showLetter && (
+        <text
+          x="32"
+          y="40"
+          textAnchor="middle"
+          fontFamily="ui-monospace, monospace"
+          fontSize="22"
+          fontWeight="700"
+          fill={stroke}
+        >
+          {target}
+        </text>
+      )}
 
       {/* Arrow */}
       {cw ? (
@@ -121,7 +143,7 @@ export function MoveCard({ move, variant = 'small', done, active, onClick }: Mov
   if (variant === 'large') {
     return (
       <div className="flex items-center gap-4 rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-4 shadow-sm dark:border-indigo-900 dark:from-indigo-950 dark:to-slate-900">
-        <FaceArrowIcon face={move.face} modifier={move.modifier} size={68} />
+        <FaceArrowIcon target={move.face} modifier={move.modifier} size={68} />
         <div className="flex flex-col">
           <div className="flex items-baseline gap-2">
             <span className="font-mono text-2xl font-semibold text-slate-900 dark:text-slate-50">
@@ -151,7 +173,7 @@ export function MoveCard({ move, variant = 'small', done, active, onClick }: Mov
             : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800')
       }
     >
-      <FaceArrowIcon face={move.face} modifier={move.modifier} size={20} className="shrink-0" />
+      <FaceArrowIcon target={move.face} modifier={move.modifier} size={20} className="shrink-0" />
       {notation}
     </button>
   );

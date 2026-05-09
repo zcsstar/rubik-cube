@@ -86,5 +86,15 @@ export function isG1Move(move: Move): boolean {
     case 'F':
     case 'B':
       return move.modifier === '2';
+    // Slice (M/E/S) and whole-cube rotations (x/y/z) are NEVER part of the
+    // G1 group — Kociemba's solver doesn't emit them, but defensive code path
+    // for completeness.
+    case 'M':
+    case 'E':
+    case 'S':
+    case 'x':
+    case 'y':
+    case 'z':
+      return false;
   }
 }

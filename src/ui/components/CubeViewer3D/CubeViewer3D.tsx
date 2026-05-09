@@ -35,7 +35,7 @@ export interface CubeViewer3DProps {
   className?: string;
 }
 
-const STICKER_GAP = 0.06; // fraction of cubie face left as black plastic
+const STICKER_GAP = 0.1; // fraction of cubie face left as black plastic
 
 const FACE_OFFSETS: Record<FaceLetter, [number, number, number]> = {
   U: [0, 1, 0],
@@ -82,7 +82,7 @@ function CubieMesh({ cubie, cubieSize, colors }: CubieMeshProps) {
             <planeGeometry args={[stickerSide, stickerSide]} />
             <meshStandardMaterial
               color={colors[color] ?? '#888'}
-              roughness={0.35}
+              roughness={0.22}
               metalness={0.05}
             />
           </mesh>
@@ -185,8 +185,8 @@ export function CubeViewer3D({
       <Canvas camera={{ position: [2.4, 2.0, 2.8], fov: 35 }} dpr={[1, 2]}>
         <Suspense fallback={null}>
           <ambientLight intensity={0.55} />
-          <directionalLight position={[5, 8, 6]} intensity={0.85} />
-          <directionalLight position={[-4, -2, -3]} intensity={0.25} />
+          <directionalLight position={[5, 8, 6]} intensity={1.0} />
+          <directionalLight position={[-4, -2, -3]} intensity={0.35} />
           <Scene
             facelets={facelets}
             size={size}

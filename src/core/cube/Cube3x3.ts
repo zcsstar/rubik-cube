@@ -2,7 +2,7 @@ import CubeJS from 'cubejs';
 import type { ICube } from './ICube';
 import { totalStickers } from './ICube';
 import type { Move } from './moves';
-import { moveToString } from './moves';
+import { isFaceLetter, moveToString } from './moves';
 import type { FaceLetter } from './colors';
 
 /**
@@ -42,18 +42,18 @@ export class Cube3x3 implements ICube {
   }
 
   apply(move: Move): Cube3x3 {
-    if (move.width !== 1) {
-      throw new Error(`3x3 does not support wide moves: ${moveToString(move)}`);
+    if (move.width === 2 && !isFaceLetter(move.face)) {
+      throw new Error(`Slice / rotation moves cannot be wide: ${moveToString(move)}`);
     }
     const next = new CubeJS(this.cube);
-    next.move(moveToString(move));
+    next.move(toCubejsToken(move));
     return new Cube3x3(next);
   }
 
   applyAll(moves: readonly Move[]): Cube3x3 {
     if (moves.length === 0) return this;
     const next = new CubeJS(this.cube);
-    next.move(moves.map(moveToString).join(' '));
+    next.move(moves.map(toCubejsToken).join(' '));
     return new Cube3x3(next);
   }
 
@@ -72,4 +72,16 @@ export class Cube3x3 implements ICube {
   clone(): Cube3x3 {
     return new Cube3x3(new CubeJS(this.cube));
   }
+}
+
+/**
+ * cubejs's parser accepts at most two characters per move token, so it has no
+ * "Uw" form — wide turns must be expressed as the lowercase counterpart (u r f
+ * d l b). Everything else (URFDLB, MES, xyz) is passed through verbatim.
+ */
+function toCubejsToken(move: Move): string {
+  if (isFaceLetter(move.face) && move.width === 2) {
+    return move.face.toLowerCase() + move.modifier;
+  }
+  return moveToString(move);
 }

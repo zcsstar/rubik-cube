@@ -111,10 +111,13 @@ export function buildCubies(facelets: string, size: CubeSize): Cubie[] {
  *
  * For a face turn on face F (width 1), the slice is the outermost layer along F's normal.
  * For a wide turn (width 2), the slice is the outermost two layers.
+ * For a middle slice (M/E/S), the slice is the central layer along that axis.
+ * For a whole-cube rotation (x/y/z), every cubie is in the slice.
  */
 export function cubieInSlice(cubie: Cubie, move: Move, size: CubeSize): boolean {
   const N = size;
   const w = move.width;
+  const mid = Math.floor(N / 2); // central index for odd N; for even N M/E/S aren't conventional but we degrade gracefully.
   switch (move.face) {
     case 'U':
       return cubie.j >= N - w;
@@ -128,6 +131,16 @@ export function cubieInSlice(cubie: Cubie, move: Move, size: CubeSize): boolean 
       return cubie.k >= N - w;
     case 'B':
       return cubie.k <= w - 1;
+    case 'M':
+      return cubie.i === mid;
+    case 'E':
+      return cubie.j === mid;
+    case 'S':
+      return cubie.k === mid;
+    case 'x':
+    case 'y':
+    case 'z':
+      return true;
   }
 }
 
@@ -140,9 +153,12 @@ export function cubieInSlice(cubie: Cubie, move: Move, size: CubeSize): boolean 
  * `angle` about `axis` reproduces the move's effect on the slice.
  */
 export function rotationForMove(move: Move): { axis: [number, number, number]; angle: number } {
-  // Outward face normal × (–1 for CW from outside, +1 for CCW from outside).
-  // Cubing uses right-hand rule about the INWARD normal for CW-from-outside.
-  // Equivalently, a CW outer turn is a NEGATIVE rotation about the outward normal axis (right-hand).
+  // Convention: rotation about an outward normal by a NEGATIVE right-handed
+  // angle equals "CW from outside that face" — the cubing convention.
+  //   Outer faces:  axis = outward normal, sign = -1
+  //   M follows L, E follows D, S follows F (axes point AWAY from those faces).
+  //   x follows R, y follows U, z follows F (whole cube rotates as if turning
+  //   that face).
   let axis: [number, number, number];
   switch (move.face) {
     case 'U':
@@ -163,8 +179,25 @@ export function rotationForMove(move: Move): { axis: [number, number, number]; a
     case 'B':
       axis = [0, 0, -1];
       break;
+    case 'M':
+      axis = [-1, 0, 0];
+      break; // follows L
+    case 'E':
+      axis = [0, -1, 0];
+      break; // follows D
+    case 'S':
+      axis = [0, 0, 1];
+      break; // follows F
+    case 'x':
+      axis = [1, 0, 0];
+      break; // follows R
+    case 'y':
+      axis = [0, 1, 0];
+      break; // follows U
+    case 'z':
+      axis = [0, 0, 1];
+      break; // follows F
   }
-  // CW from outside = negative rotation about the outward normal (right-handed).
   const cwSign = -1;
   const magnitude =
     move.modifier === '2' ? Math.PI : move.modifier === "'" ? -Math.PI / 2 : Math.PI / 2;

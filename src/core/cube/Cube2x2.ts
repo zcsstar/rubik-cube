@@ -1,6 +1,7 @@
 import type { ICube } from './ICube';
 import { totalStickers } from './ICube';
 import type { Move } from './moves';
+import { isFaceLetter } from './moves';
 import type { FaceLetter } from './colors';
 
 /**
@@ -106,6 +107,10 @@ export class Cube2x2 implements ICube {
   apply(move: Move): Cube2x2 {
     if (move.width !== 1) {
       throw new Error('2x2 does not support wide moves');
+    }
+    if (!isFaceLetter(move.face)) {
+      // Slice (M/E/S) and rotation (x/y/z) moves are undefined on a 2×2.
+      throw new Error(`2x2 does not support slice or rotation moves: ${move.face}${move.modifier}`);
     }
     const cw = BASE_PERM[move.face];
     let perm = cw;

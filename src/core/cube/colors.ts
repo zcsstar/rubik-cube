@@ -1,6 +1,8 @@
 /**
- * WCA-standard sticker colors. Single source of truth.
- * Letters (U/R/F/D/L/B) are face IDs; the hex is the color of that face on a solved cube.
+ * Display palette for stickers across the UI (3D viewer, color picker, mini net).
+ * Lifted slightly from raw WCA hex for a brighter, more modern look on screen.
+ * Camera-matching uses its own canonical WCA reference (see colorRecognition/classifier.ts);
+ * keep the two decoupled so display tweaks never affect physical-sticker classification.
  */
 export type FaceLetter = 'U' | 'R' | 'F' | 'D' | 'L' | 'B';
 
@@ -8,11 +10,11 @@ export const FACES: readonly FaceLetter[] = ['U', 'R', 'F', 'D', 'L', 'B'] as co
 
 export const FACE_COLORS: Record<FaceLetter, string> = {
   U: '#FFFFFF',
-  D: '#FFD500',
-  F: '#00B04B',
-  B: '#1A66FF',
-  R: '#EE0000',
-  L: '#FF6F00',
+  D: '#FFE03D',
+  F: '#2BC15B',
+  B: '#3E7BFF',
+  R: '#F23A3A',
+  L: '#FF8A1F',
 };
 
 export const HIGH_CONTRAST_COLORS: Record<FaceLetter, string> = {
