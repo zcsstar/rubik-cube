@@ -95,6 +95,38 @@ The architecture deliberately leaves these as drop-in additions: the
 `ICube` / `ISolver` interfaces and the generic `StepViewer` + phase metadata
 already support them.
 
+## Roadmap (next & later)
+
+Tracked here so we don't forget. Roughly in priority order.
+
+* **Slice-move support (M / E / S)** — extend the move parser and 3×3
+  applier to accept middle-slice rotations. Unlocks the canonical
+  finger-friendly PLL algorithms (H-perm in 7 moves vs ~12 with outer
+  turns only).
+* **Full PLL coverage** — after slice-move support lands, expand the
+  3×3 step-7 tutorial from 2 cases to all 21 named PLL cases (Aa, Ab,
+  E, T, F, V, Y, Ja, Jb, Ra, Rb, Na, Nb, Ga–Gd, Ua, Ub, H, Z) with
+  recognition tips and round-trip-tested setups.
+* **True LBL `BeginnerSolver3x3`** — auto-solve a user's cube using the
+  same step-by-step beginner method the tutorial teaches. The current
+  solver is Kociemba (efficient but cryptic 22-move solutions); a true
+  LBL solver would emit longer but pedagogically straighter
+  instructions kids can follow alongside the tutorial.
+* **Camera color recognition robustness** — current HSV nearest-neighbour
+  classifier handles normal indoor lighting. A small TensorFlow.js model
+  trained on a handful of cube photos would be sturdier under warm /
+  fluorescent / very dim lighting.
+* **`Cube4x4` + `Solver4x4Reduction`** — full 4×4 mechanics (96
+  stickers, wide moves) plus the centres → edges → 3×3 reduction
+  solver with parity fix-ups.
+* **Practice mode** — scramble the cube to a known mid-LBL state
+  (e.g., F2L done, OLL pending) and let the user attempt that phase
+  with feedback.
+* **PWA install** — manifest + service-worker so users can install
+  the site to their home screen and use it offline.
+* **Phase 3: Capacitor wrap** — package the existing static build for
+  iOS / Android app-store distribution.
+
 ## Tests
 
 ```sh

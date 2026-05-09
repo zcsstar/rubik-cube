@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Shuffle, Sparkles, Brush } from 'lucide-react';
+import { Shuffle, Sparkles, Brush, Camera } from 'lucide-react';
 import type { CubeSize } from '@core/cube/ICube';
 import { CubeViewer3D } from '@ui/components/CubeViewer3D/CubeViewer3D';
 import { StepViewer } from '@ui/components/StepViewer/StepViewer';
 import { ColorInputNet } from '@ui/components/ColorInputNet/ColorInputNet';
+import { CameraCapture } from '@ui/components/CameraCapture/CameraCapture';
 import { useSolveSession } from '@ui/hooks/useSolveSession';
 import { getSolver } from '@core/solvers/SolverFactory';
 import { analyzeSolutionPhases } from '@core/solvers/analyzePhases';
@@ -53,7 +54,10 @@ function SolveBody({ size }: { size: 2 | 3 }) {
     };
   }, [size]);
 
-  const [paintMode, setPaintMode] = useState(false);
+  type Mode = 'idle' | 'paint' | 'camera';
+  const [mode, setMode] = useState<Mode>('idle');
+  /** Pre-fill for ColorInputNet after a camera capture: jumps straight to "review and correct". */
+  const [paintInitial, setPaintInitial] = useState<string | null>(null);
 
   const phases = useMemo(
     () => analyzeSolutionPhases(session.initial, session.solution),
@@ -96,15 +100,30 @@ function SolveBody({ size }: { size: 2 | 3 }) {
             </button>
             <button
               type="button"
-              onClick={() => setPaintMode((p) => !p)}
+              onClick={() => {
+                setPaintInitial(null);
+                setMode((m) => (m === 'paint' ? 'idle' : 'paint'));
+              }}
               className={
                 'flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium shadow-sm transition ' +
-                (paintMode
+                (mode === 'paint'
                   ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-950 dark:text-indigo-200'
                   : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800')
               }
             >
               <Brush size={14} /> {t('solve.btn.paint')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode((m) => (m === 'camera' ? 'idle' : 'camera'))}
+              className={
+                'flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium shadow-sm transition ' +
+                (mode === 'camera'
+                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-950 dark:text-indigo-200'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800')
+              }
+            >
+              <Camera size={14} /> {t('solve.btn.camera')}
             </button>
             <button
               type="button"
@@ -132,16 +151,31 @@ function SolveBody({ size }: { size: 2 | 3 }) {
         </section>
 
         <section className="flex flex-col gap-4">
-          {paintMode ? (
+          {mode === 'camera' ? (
+            <CameraCapture
+              size={size}
+              onComplete={(faceletStr) => {
+                // Hand the camera result to ColorInputNet so the user can verify
+                // and fix any sticker the classifier misread before solving.
+                setPaintInitial(faceletStr);
+                setMode('paint');
+              }}
+              onCancel={() => setMode('idle')}
+            />
+          ) : mode === 'paint' ? (
             <ColorInputNet
               size={size}
-              initial={session.initial.toFaceletString()}
+              initial={paintInitial ?? session.initial.toFaceletString()}
               onSubmit={(faceletStr) => {
                 const cube = size === 2 ? Cube2x2.fromFacelets(faceletStr) : Cube3x3.fromFacelets(faceletStr);
                 session.setInitial(cube);
-                setPaintMode(false);
+                setPaintInitial(null);
+                setMode('idle');
               }}
-              onCancel={() => setPaintMode(false)}
+              onCancel={() => {
+                setPaintInitial(null);
+                setMode('idle');
+              }}
             />
           ) : session.solution.length > 0 ? (
             <StepViewer
