@@ -205,7 +205,7 @@ export function CubeViewer3D({
 }: CubeViewer3DProps) {
   return (
     <div className={className ?? 'h-[360px] w-full'}>
-      <Canvas camera={{ position: [2.4, 2.0, 2.8], fov: 35 }} dpr={[1, 2]}>
+      <Canvas flat camera={{ position: [2.4, 2.0, 2.8], fov: 35 }} dpr={[1, 2]}>
         <Suspense fallback={null}>
           <ambientLight intensity={0.8} />
           <directionalLight position={[5, 8, 6]} intensity={0.85} />
