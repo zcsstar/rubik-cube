@@ -10,11 +10,11 @@ export const FACES: readonly FaceLetter[] = ['U', 'R', 'F', 'D', 'L', 'B'] as co
 
 export const FACE_COLORS: Record<FaceLetter, string> = {
   U: '#FFFFFF',
-  D: '#FFE03D',
-  F: '#2BC15B',
-  B: '#3E7BFF',
-  R: '#F23A3A',
-  L: '#FF8A1F',
+  D: '#FFE93C',
+  F: '#22C257',
+  B: '#2D6CFF',
+  R: '#E83232',
+  L: '#FF7E1A',
 };
 
 export const HIGH_CONTRAST_COLORS: Record<FaceLetter, string> = {

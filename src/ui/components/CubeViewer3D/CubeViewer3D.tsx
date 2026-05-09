@@ -36,6 +36,23 @@ export interface CubeViewer3DProps {
 }
 
 const STICKER_GAP = 0.1; // fraction of cubie face left as black plastic
+const STICKER_CORNER_RADIUS_RATIO = 0.14; // sticker corner radius as fraction of side
+
+function makeRoundedSquareShape(side: number, radius: number): THREE.Shape {
+  const w = side / 2;
+  const r = Math.min(radius, w);
+  const s = new THREE.Shape();
+  s.moveTo(-w + r, -w);
+  s.lineTo(w - r, -w);
+  s.quadraticCurveTo(w, -w, w, -w + r);
+  s.lineTo(w, w - r);
+  s.quadraticCurveTo(w, w, w - r, w);
+  s.lineTo(-w + r, w);
+  s.quadraticCurveTo(-w, w, -w, w - r);
+  s.lineTo(-w, -w + r);
+  s.quadraticCurveTo(-w, -w, -w + r, -w);
+  return s;
+}
 
 const FACE_OFFSETS: Record<FaceLetter, [number, number, number]> = {
   U: [0, 1, 0],
@@ -63,7 +80,11 @@ interface CubieMeshProps {
 
 function CubieMesh({ cubie, cubieSize, colors }: CubieMeshProps) {
   const stickerSide = cubieSize * (1 - STICKER_GAP);
-  // Render a black body box with sticker planes flush on each outward face.
+  const stickerShape = useMemo(
+    () => makeRoundedSquareShape(stickerSide, stickerSide * STICKER_CORNER_RADIUS_RATIO),
+    [stickerSide],
+  );
+  // Render a black body box with rounded sticker shapes flush on each outward face.
   return (
     <group position={cubie.position}>
       <mesh>
@@ -79,11 +100,13 @@ function CubieMesh({ cubie, cubieSize, colors }: CubieMeshProps) {
             position={[offset[0] * lift, offset[1] * lift, offset[2] * lift]}
             rotation={FACE_ROTATIONS[face]}
           >
-            <planeGeometry args={[stickerSide, stickerSide]} />
-            <meshStandardMaterial
+            <shapeGeometry args={[stickerShape]} />
+            <meshPhysicalMaterial
               color={colors[color] ?? '#888'}
-              roughness={0.22}
-              metalness={0.05}
+              roughness={0.4}
+              metalness={0}
+              clearcoat={0.6}
+              clearcoatRoughness={0.18}
             />
           </mesh>
         );
@@ -184,9 +207,9 @@ export function CubeViewer3D({
     <div className={className ?? 'h-[360px] w-full'}>
       <Canvas camera={{ position: [2.4, 2.0, 2.8], fov: 35 }} dpr={[1, 2]}>
         <Suspense fallback={null}>
-          <ambientLight intensity={0.55} />
-          <directionalLight position={[5, 8, 6]} intensity={1.0} />
-          <directionalLight position={[-4, -2, -3]} intensity={0.35} />
+          <ambientLight intensity={0.8} />
+          <directionalLight position={[5, 8, 6]} intensity={0.85} />
+          <directionalLight position={[-4, -2, -3]} intensity={0.3} />
           <Scene
             facelets={facelets}
             size={size}
