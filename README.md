@@ -17,6 +17,9 @@ Phase 3 wraps it in Capacitor for iOS/Android.
 | Color input — 2D unfolded net painter    | ✅ ready (with sticker-count + centre validation) |
 | Phase analysis (Kociemba two-phase split: Set-up → Finish) | ✅ ready |
 | Beginner-method tutorial pages (3×3 LBL, 2×2 Ortega) | ✅ ready at `/learn/3` and `/learn/2` |
+| Multi-language UI (English + 简体中文)    | ✅ ready (locale switcher in navbar; tutorials translated) |
+| Camera color recognition (HSV nearest-neighbour) | ✅ ready (six-face guided capture, hands result to ColorInputNet for review) |
+| PWA install + offline support              | ✅ ready (installable on iOS / Android / desktop; works offline after first visit) |
 | True LBL solver (auto-solves a user's cube via beginner method) | ⏳ pending — pattern-recognition for ~20 cases across 7 stages; current `Solver3x3Kociemba` is faster, the tutorial pages teach the method |
 | Camera color recognition                 | ⏳ deferred to Phase 2 |
 
@@ -122,8 +125,8 @@ Tracked here so we don't forget. Roughly in priority order.
 * **Practice mode** — scramble the cube to a known mid-LBL state
   (e.g., F2L done, OLL pending) and let the user attempt that phase
   with feedback.
-* **PWA install** — manifest + service-worker so users can install
-  the site to their home screen and use it offline.
+* ~~**PWA install** — manifest + service-worker so users can install
+  the site to their home screen and use it offline.~~ ✅ shipped.
 * **Phase 3: Capacitor wrap** — package the existing static build for
   iOS / Android app-store distribution.
 
