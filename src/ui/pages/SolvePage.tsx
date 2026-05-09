@@ -90,6 +90,38 @@ function SolveBody({ size }: { size: 2 | 3 }) {
             />
           </div>
 
+          {size === 3 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-800 dark:bg-slate-950/60">
+              <span className="font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {t('solve.flavour.label')}
+              </span>
+              <button
+                type="button"
+                onClick={() => session.setFlavour('fast')}
+                className={
+                  'rounded px-2 py-1 transition ' +
+                  (session.flavour === 'fast'
+                    ? 'bg-indigo-500 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800')
+                }
+              >
+                {t('solve.flavour.fast')}
+              </button>
+              <button
+                type="button"
+                onClick={() => session.setFlavour('beginner')}
+                className={
+                  'rounded px-2 py-1 transition ' +
+                  (session.flavour === 'beginner'
+                    ? 'bg-indigo-500 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800')
+                }
+              >
+                {t('solve.flavour.beginner')}
+              </button>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"

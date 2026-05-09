@@ -53,6 +53,9 @@ export const zh: Messages = {
   'solve.step3': '观看动画演示,或一步一步地查看每一步。',
   'solve.prompt.initial': '先打乱或填色,然后按求解。',
   'solve.prompt.solving': '正在计算解法…',
+  'solve.flavour.label': '解法风格:',
+  'solve.flavour.fast': '最短(Kociemba)',
+  'solve.flavour.beginner': '入门(逐层法)',
 
   // Player / StepViewer
   'player.title': '解法',

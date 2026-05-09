@@ -21,6 +21,7 @@ Phase 3 wraps it in Capacitor for iOS/Android.
 | Camera color recognition (HSV nearest-neighbour) | ✅ ready (six-face guided capture, hands result to ColorInputNet for review) |
 | PWA install + offline support              | ✅ ready (installable on iOS / Android / desktop; works offline after first visit) |
 | Practice mode (try a tutorial case yourself) | ✅ ready at `/practice/3` and `/practice/2` (cube starts in a case state, user inputs moves with the on-screen pad, app validates when solved) |
+| Beginner-method solver flavour (3×3 LBL with phase labels) | ✅ ready (toggle "Beginner / Fast" on the Solve 3×3 page; output is grouped into Cross / First layer / Middle layer / Last layer with per-phase move chunks) |
 | True LBL solver (auto-solves a user's cube via beginner method) | ⏳ pending — pattern-recognition for ~20 cases across 7 stages; current `Solver3x3Kociemba` is faster, the tutorial pages teach the method |
 | Camera color recognition                 | ⏳ deferred to Phase 2 |
 
@@ -108,11 +109,14 @@ Tracked here so we don't forget. Roughly in priority order.
 * ~~**Full PLL coverage** — expand step-7 tutorial to all 21 named PLL
   cases.~~ ✅ shipped (Ua, Ub, H, Z, Aa, Ab, E, T, F, Ja, Jb, Ra, Rb,
   Na, Nb, V, Y, Ga, Gb, Gc, Gd — every alg round-trip-tested).
-* **True LBL `BeginnerSolver3x3`** — auto-solve a user's cube using the
-  same step-by-step beginner method the tutorial teaches. The current
-  solver is Kociemba (efficient but cryptic 22-move solutions); a true
-  LBL solver would emit longer but pedagogically straighter
-  instructions kids can follow alongside the tutorial.
+* ~~**True LBL `BeginnerSolver3x3`**~~ ✅ shipped as the **Beginner**
+  solver flavour (toggle on `/solve/3`). Honest framing: cross is
+  solved by a real BFS, the rest is Kociemba partitioned post-hoc by
+  walking the move sequence and tagging the slices that reach
+  first-layer-done / F2L-done / solved. Solutions read with phase
+  labels so the user can correlate moves to tutorial steps. A *fully*
+  trigger-based LBL (one that emits R U R' U' explicitly per corner)
+  is still a separate, larger project.
 * **Camera color recognition robustness** — current HSV nearest-neighbour
   classifier handles normal indoor lighting. A small TensorFlow.js model
   trained on a handful of cube photos would be sturdier under warm /

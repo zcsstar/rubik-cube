@@ -53,6 +53,9 @@ export const en: Messages = {
   'solve.step3': 'Watch the moves play, or step through them one at a time.',
   'solve.prompt.initial': 'Scramble or paint a cube, then press Solve.',
   'solve.prompt.solving': 'Computing solution…',
+  'solve.flavour.label': 'Solver style:',
+  'solve.flavour.fast': 'Fast (Kociemba)',
+  'solve.flavour.beginner': 'Beginner (layer-by-layer)',
 
   // Player / StepViewer
   'player.title': 'Solution',

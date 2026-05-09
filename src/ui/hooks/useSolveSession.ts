@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { ICube, CubeSize } from '@core/cube/ICube';
 import type { Move } from '@core/cube/moves';
 import { invertMove, movesToString } from '@core/cube/moves';
-import { getSolver } from '@core/solvers/SolverFactory';
+import { getSolver, type SolverFlavour } from '@core/solvers/SolverFactory';
 import { Cube2x2 } from '@core/cube/Cube2x2';
 import { Cube3x3 } from '@core/cube/Cube3x3';
 
@@ -31,6 +31,9 @@ export interface SolveSession {
    * Request a step change. Single-step deltas animate; jumps (reset, scrubbing
    * to a non-adjacent move) snap immediately.
    */
+  /** Currently selected solver flavour. */
+  flavour: SolverFlavour;
+  setFlavour: (flavour: SolverFlavour) => void;
   requestStep: (step: number) => void;
   /** Skip current animation immediately to its target step. */
   finishAnimation: () => void;
@@ -74,6 +77,7 @@ export function useSolveSession(size: CubeSize): SolveSession {
   const [status, setStatus] = useState<SolveStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [animating, setAnimating] = useState<AnimationState | null>(null);
+  const [flavour, setFlavour] = useState<SolverFlavour>('fast');
 
   const cube = useMemo(() => {
     if (solution.length === 0) return initial;
@@ -128,18 +132,18 @@ export function useSolveSession(size: CubeSize): SolveSession {
     setPlaying(false);
     setAnimating(null);
     try {
-      const solver = getSolver(size);
+      const solver = getSolver(size, flavour);
       const moves = await solver.solve(initial);
       setSolution(moves);
       setStep(0);
       setStatus('ready');
       // eslint-disable-next-line no-console
-      console.debug('[solve]', size + 'x' + size, '→', movesToString(moves), `(${moves.length} moves)`);
+      console.debug('[solve]', size + 'x' + size, flavour, '→', movesToString(moves), `(${moves.length} moves)`);
     } catch (e) {
       setStatus('error');
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [initial, size]);
+  }, [initial, size, flavour]);
 
   const resetToSolved = useCallback(() => {
     setInitialState(newSolved(size));
@@ -171,6 +175,8 @@ export function useSolveSession(size: CubeSize): SolveSession {
     status,
     error,
     animating,
+    flavour,
+    setFlavour,
     requestStep,
     finishAnimation,
     setPlaying,
