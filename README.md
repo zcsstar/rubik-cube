@@ -19,7 +19,7 @@ Phase 3 wraps it in Capacitor for iOS/Android.
 | Phase analysis (Kociemba two-phase split: Set-up → Finish) | ✅ ready |
 | Beginner-method tutorial pages (3×3 LBL, 2×2 Ortega) | ✅ ready at `/learn/3` and `/learn/2` |
 | Multi-language UI (English + 简体中文)    | ✅ ready (locale switcher in navbar; tutorials translated) |
-| Camera color recognition (HSV nearest-neighbour) | ✅ ready (six-face guided capture, hands result to ColorInputNet for review) |
+| Camera color recognition (HSV nearest-neighbour + multi-sample averaging + K-means refinement) | ✅ ready (each Capture press averages 4 frames over ~150 ms; after all six faces, K-means re-clusters all patches into 6 groups anchored to WCA references for cross-face lighting consistency) |
 | PWA install + offline support              | ✅ ready (installable on iOS / Android / desktop; works offline after first visit) |
 | Practice mode (try a tutorial case yourself) | ✅ ready at `/practice/3` and `/practice/2` (cube starts in a case state, user inputs moves with the on-screen pad, app validates when solved) |
 | Beginner-method solver flavour (3×3 LBL with phase labels) | ✅ ready (toggle "Beginner / Fast" on the Solve 3×3 page; output is grouped into Cross / First layer / Middle layer / Last layer with per-phase move chunks) |
@@ -118,10 +118,11 @@ Tracked here so we don't forget. Roughly in priority order.
   labels so the user can correlate moves to tutorial steps. A *fully*
   trigger-based LBL (one that emits R U R' U' explicitly per corner)
   is still a separate, larger project.
-* **Camera color recognition robustness** — current HSV nearest-neighbour
-  classifier handles normal indoor lighting. A small TensorFlow.js model
-  trained on a handful of cube photos would be sturdier under warm /
-  fluorescent / very dim lighting.
+* ~~**Camera color recognition robustness**~~ ✅ improved with
+  multi-sample frame averaging (per Capture press) plus K-means
+  cross-face refinement. A TensorFlow.js model trained on real cube
+  photos would still help in genuinely tough lighting (very dim,
+  very warm) — flagged as a future bundle-cost trade-off.
 * **`Cube4x4` + `Solver4x4Reduction`** — full 4×4 mechanics (96
   stickers, wide moves) plus the centres → edges → 3×3 reduction
   solver with parity fix-ups.

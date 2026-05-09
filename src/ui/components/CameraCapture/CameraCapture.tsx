@@ -4,6 +4,7 @@ import type { CubeSize } from '@core/cube/ICube';
 import { URFDLB } from '@core/cube/ICube';
 import type { FaceLetter } from '@core/cube/colors';
 import { classifyColor, samplePatch } from '@core/colorRecognition/classifier';
+import { refineWithKMeans, type Sample } from '@core/colorRecognition/refine';
 import { FACE_COLORS } from '@core/cube/colors';
 import { CubeMiniNet } from '@ui/components/CubeMiniNet/CubeMiniNet';
 import { useI18n } from '@ui/i18n/I18nProvider';
@@ -19,9 +20,16 @@ export interface CameraCaptureProps {
 const FACE_ORDER: readonly FaceLetter[] = URFDLB;
 
 interface FaceCapture {
-  /** Per-sticker letter, row-major. Length = size*size. */
+  /** Provisional per-sticker letter, row-major (used for the live preview).
+   *  Final labels are recomputed via K-means across all six faces just
+   *  before handoff. */
   stickers: FaceLetter[];
+  /** Raw averaged RGB per patch — kept so we can re-classify with K-means. */
+  rgb: Array<{ r: number; g: number; b: number }>;
 }
+
+const MULTI_SAMPLE_FRAMES = 4; // frames per Capture press (averaged together)
+const MULTI_SAMPLE_DELAY_MS = 50;
 
 export function CameraCapture({ size, onComplete, onCancel }: CameraCaptureProps) {
   const { t } = useI18n();
@@ -81,14 +89,13 @@ export function CameraCapture({ size, onComplete, onCancel }: CameraCaptureProps
   // for unfilled faces (so the running mini-net preview always renders something).
   const previewFacelets = useMemo(() => buildFaceletString(size, captures), [size, captures]);
 
-  const captureFace = useCallback(() => {
+  const captureFace = useCallback(async () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
     const vw = video.videoWidth;
     const vh = video.videoHeight;
     if (!vw || !vh) return;
-    // Square crop from the centre of the video frame.
     const side = Math.min(vw, vh);
     const sx = (vw - side) / 2;
     const sy = (vh - side) / 2;
@@ -96,19 +103,41 @@ export function CameraCapture({ size, onComplete, onCancel }: CameraCaptureProps
     canvas.height = side;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
-    ctx.drawImage(video, sx, sy, side, side, 0, 0, side, side);
-    const img = ctx.getImageData(0, 0, side, side);
-    const stickers: FaceLetter[] = [];
     const radius = Math.max(8, side / size / 8);
-    for (let row = 0; row < size; row++) {
-      for (let col = 0; col < size; col++) {
-        const cx = ((col + 0.5) / size) * side;
-        const cy = ((row + 0.5) / size) * side;
-        const { r, g, b } = samplePatch(img.data, side, cx, cy, radius);
-        stickers.push(classifyColor(r, g, b));
+
+    // Multi-sample: capture MULTI_SAMPLE_FRAMES frames spaced ~50ms apart
+    // and average each patch across them. Knocks down per-frame noise from
+    // JPEG compression / camera AE flicker / hand jitter.
+    const accum = new Array(size * size).fill(null).map(() => ({ r: 0, g: 0, b: 0 }));
+    for (let frame = 0; frame < MULTI_SAMPLE_FRAMES; frame++) {
+      ctx.drawImage(video, sx, sy, side, side, 0, 0, side, side);
+      const img = ctx.getImageData(0, 0, side, side);
+      let idx = 0;
+      for (let row = 0; row < size; row++) {
+        for (let col = 0; col < size; col++) {
+          const cx = ((col + 0.5) / size) * side;
+          const cy = ((row + 0.5) / size) * side;
+          const { r, g, b } = samplePatch(img.data, side, cx, cy, radius);
+          accum[idx]!.r += r;
+          accum[idx]!.g += g;
+          accum[idx]!.b += b;
+          idx++;
+        }
+      }
+      if (frame < MULTI_SAMPLE_FRAMES - 1) {
+        await new Promise<void>((resolve) => setTimeout(resolve, MULTI_SAMPLE_DELAY_MS));
       }
     }
-    setCaptures((prev) => ({ ...prev, [currentFace]: { stickers } }));
+    const stickers: FaceLetter[] = [];
+    const rgb: Array<{ r: number; g: number; b: number }> = [];
+    for (let i = 0; i < accum.length; i++) {
+      const r = accum[i]!.r / MULTI_SAMPLE_FRAMES;
+      const g = accum[i]!.g / MULTI_SAMPLE_FRAMES;
+      const b = accum[i]!.b / MULTI_SAMPLE_FRAMES;
+      rgb.push({ r, g, b });
+      stickers.push(classifyColor(r, g, b));
+    }
+    setCaptures((prev) => ({ ...prev, [currentFace]: { stickers, rgb } }));
     setStage('preview');
   }, [currentFace, size]);
 
@@ -118,9 +147,34 @@ export function CameraCapture({ size, onComplete, onCancel }: CameraCaptureProps
       setStage('live');
     } else {
       stopStream();
-      onComplete(previewFacelets);
+      // Final pass: K-means refinement across all six faces. Before this pass,
+      // each patch was classified independently and may have suffered from
+      // changing lighting between captures. K-means anchors all 54 / 96 / 24
+      // patches against six common centroids.
+      const refined = refineCaptures(captures);
+      onComplete(refined ?? previewFacelets);
     }
-  }, [faceIndex, onComplete, previewFacelets, stopStream]);
+  }, [faceIndex, onComplete, previewFacelets, stopStream, captures]);
+
+  function refineCaptures(allCaptures: Record<FaceLetter, FaceCapture | null>): string | null {
+    const samples: Sample[] = [];
+    for (let f = 0; f < FACE_ORDER.length; f++) {
+      const cap = allCaptures[FACE_ORDER[f]!];
+      if (!cap) return null;
+      cap.rgb.forEach((rgb, patchIndex) => {
+        samples.push({ faceIndex: f, patchIndex, rgb });
+      });
+    }
+    const labels = refineWithKMeans(samples);
+    let out = '';
+    for (let f = 0; f < FACE_ORDER.length; f++) {
+      const stickers = allCaptures[FACE_ORDER[f]!]!.stickers;
+      for (let p = 0; p < stickers.length; p++) {
+        out += labels.get(`${f},${p}`) ?? stickers[p];
+      }
+    }
+    return out;
+  }
 
   const retake = useCallback(() => {
     setCaptures((prev) => ({ ...prev, [currentFace]: null }));
