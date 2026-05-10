@@ -76,7 +76,7 @@ export function StepViewer({
   const phase = findPhase(phases, currentStep);
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-200">{t(titleKey)}</h3>
         <span className="font-mono text-xs text-slate-500">
@@ -121,32 +121,33 @@ export function StepViewer({
         </div>
       )}
 
+      {/* Step controls — sized for touch (~44pt min). Same look on desktop. */}
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => onStepChange(0)}
           disabled={atStart && !playing}
           aria-label={t('player.aria.reset')}
-          className="rounded-md border border-slate-200 p-2 text-slate-600 enabled:hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:bg-slate-800"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-600 enabled:hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:bg-slate-800"
         >
-          <RotateCcw size={16} />
+          <RotateCcw size={20} />
         </button>
         <button
           type="button"
           onClick={() => onStepChange(currentStep - 1)}
           disabled={atStart}
           aria-label={t('player.aria.prev')}
-          className="rounded-md border border-slate-200 p-2 text-slate-600 enabled:hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:bg-slate-800"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-600 enabled:hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:bg-slate-800"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={22} />
         </button>
         <button
           type="button"
           onClick={() => onPlayingChange(!playing)}
           disabled={atEnd && !playing}
-          className="flex flex-1 items-center justify-center gap-2 rounded-md bg-indigo-500 px-3 py-2 text-sm font-medium text-white shadow-sm enabled:hover:bg-indigo-600 disabled:opacity-40"
+          className="flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-indigo-500 px-3 text-sm font-medium text-white shadow-sm enabled:hover:bg-indigo-600 disabled:opacity-40"
         >
-          {playing ? <Pause size={16} /> : <Play size={16} />}
+          {playing ? <Pause size={18} /> : <Play size={18} />}
           {playing ? t('player.btn.pause') : atEnd ? t('player.btn.finished') : t('player.btn.play')}
         </button>
         <button
@@ -154,9 +155,9 @@ export function StepViewer({
           onClick={() => onStepChange(currentStep + 1)}
           disabled={atEnd}
           aria-label={t('player.aria.next')}
-          className="rounded-md border border-slate-200 p-2 text-slate-600 enabled:hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:bg-slate-800"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-600 enabled:hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:bg-slate-800"
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={22} />
         </button>
       </div>
     </div>

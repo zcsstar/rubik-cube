@@ -55,21 +55,24 @@ function SolveBody({ size }: { size: 2 | 3 }) {
   const descKey = size === 2 ? 'solve.page2.description' : 'solve.page3.description';
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 lg:py-10">
+    <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4 sm:gap-6 sm:py-6 lg:py-10">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t(titleKey)}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t(descKey)}</p>
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">{t(titleKey)}</h1>
+        <p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">{t(descKey)}</p>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="flex flex-col gap-3">
-          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-3 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-950">
+      <div className="grid gap-3 sm:gap-6 lg:grid-cols-2">
+        <section className="flex flex-col gap-2 sm:gap-3">
+          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-2 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-950 sm:p-3">
             <CubeViewer3D
               facelets={facelets}
               size={size}
               animation={session.animating}
               onAnimationEnd={session.finishAnimation}
-              className="aspect-square w-full"
+              // On phones, cap the cube to ~44% of viewport height so the cube
+              // + controls + the start of the step viewer all fit on one
+              // screen without scrolling. Desktop keeps the full square.
+              className="mx-auto aspect-square w-full max-w-[44vh] lg:max-w-none"
             />
           </div>
 
