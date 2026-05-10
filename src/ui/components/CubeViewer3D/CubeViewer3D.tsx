@@ -204,7 +204,11 @@ export function CubeViewer3D({
       // OrbitControls still rotates the cube on horizontal / two-finger drag.
       style={{ touchAction: 'pan-y' }}
     >
-      <Canvas flat camera={{ position: [2.4, 2.0, 2.8], fov: 35 }} dpr={[1, 2]}>
+      {/* Camera tuned so the cube fills ~80% of the canvas height — closer
+          framing reduces the dark margins above and below the cube on mobile,
+          where every vertical pixel matters for fitting cube + controls
+          on one screen. */}
+      <Canvas flat camera={{ position: [2.0, 1.7, 2.4], fov: 35 }} dpr={[1, 2]}>
         <Suspense fallback={null}>
           <ambientLight intensity={0.8} />
           <directionalLight position={[5, 8, 6]} intensity={0.85} />

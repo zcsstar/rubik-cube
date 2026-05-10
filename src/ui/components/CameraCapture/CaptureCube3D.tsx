@@ -206,7 +206,7 @@ export function CaptureCube3D({ size, captures, activeFace, className }: Capture
       // OrbitControls here, so swallowing touch would only block scrolling.
       style={{ touchAction: 'pan-y' }}
     >
-      <Canvas flat camera={{ position: [2.4, 2.0, 2.8], fov: 35 }} dpr={[1, 2]}>
+      <Canvas flat camera={{ position: [2.0, 1.7, 2.4], fov: 35 }} dpr={[1, 2]}>
         <Suspense fallback={null}>
           <ambientLight intensity={0.85} />
           <directionalLight position={[5, 8, 6]} intensity={0.85} />

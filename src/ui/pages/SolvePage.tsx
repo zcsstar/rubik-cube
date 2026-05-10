@@ -63,48 +63,53 @@ function SolveBody({ size }: { size: 2 | 3 }) {
 
       <div className="grid gap-3 sm:gap-6 lg:grid-cols-2">
         <section className="flex flex-col gap-2 sm:gap-3">
-          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-2 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-950 sm:p-3">
+          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-0 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-950 sm:p-3">
             <CubeViewer3D
               facelets={facelets}
               size={size}
               animation={session.animating}
               onAnimationEnd={session.finishAnimation}
-              // On phones, cap the cube to ~44% of viewport height so the cube
-              // + controls + the start of the step viewer all fit on one
-              // screen without scrolling. Desktop keeps the full square.
-              className="mx-auto aspect-square w-full max-w-[44vh] lg:max-w-none"
+              // On phones, cap the cube to ~38vh so the cube + controls + the
+              // start of the step viewer fit on one screen. Combined with the
+              // tighter camera framing in CubeViewer3D, this leaves enough
+              // visual size for the cube to read clearly. Desktop unchanged.
+              className="mx-auto aspect-square w-full max-w-[38vh] lg:max-w-none"
             />
           </div>
 
           {size === 3 && (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-800 dark:bg-slate-950/60">
-              <span className="font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            // Compact on mobile (just two pill buttons), labelled card on
+            // desktop. Drops a ~50px band from the top of the phone layout.
+            <div className="flex flex-wrap items-center gap-2 text-xs sm:rounded-md sm:border sm:border-slate-200 sm:bg-slate-50 sm:px-3 sm:py-2 sm:dark:border-slate-800 sm:dark:bg-slate-950/60">
+              <span className="hidden font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 sm:inline">
                 {t('solve.flavour.label')}
               </span>
-              <button
-                type="button"
-                onClick={() => session.setFlavour('fast')}
-                className={
-                  'rounded px-2 py-1 transition ' +
-                  (session.flavour === 'fast'
-                    ? 'bg-indigo-500 text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800')
-                }
-              >
-                {t('solve.flavour.fast')}
-              </button>
-              <button
-                type="button"
-                onClick={() => session.setFlavour('beginner')}
-                className={
-                  'rounded px-2 py-1 transition ' +
-                  (session.flavour === 'beginner'
-                    ? 'bg-indigo-500 text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800')
-                }
-              >
-                {t('solve.flavour.beginner')}
-              </button>
+              <div className="flex rounded-md border border-slate-200 bg-white p-0.5 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+                <button
+                  type="button"
+                  onClick={() => session.setFlavour('fast')}
+                  className={
+                    'rounded px-2 py-1 transition ' +
+                    (session.flavour === 'fast'
+                      ? 'bg-indigo-500 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800')
+                  }
+                >
+                  {t('solve.flavour.fast')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => session.setFlavour('beginner')}
+                  className={
+                    'rounded px-2 py-1 transition ' +
+                    (session.flavour === 'beginner'
+                      ? 'bg-indigo-500 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800')
+                  }
+                >
+                  {t('solve.flavour.beginner')}
+                </button>
+              </div>
             </div>
           )}
 
