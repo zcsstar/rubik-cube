@@ -121,8 +121,10 @@ export function StepViewer({
         </div>
       )}
 
-      {/* Step controls — sized for touch (~44pt min). Same look on desktop. */}
-      <div className="flex items-center gap-2">
+      {/* Step controls — sized for touch (~44pt min). Hidden on mobile;
+          SolvePage renders a fixed-bottom step bar there so play/prev/next
+          stay reachable without scrolling past the move chips. */}
+      <div className="hidden items-center gap-2 sm:flex">
         <button
           type="button"
           onClick={() => onStepChange(0)}

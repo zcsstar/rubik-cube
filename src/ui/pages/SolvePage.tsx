@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Shuffle, Sparkles, Brush, Camera, Loader2 } from 'lucide-react';
+import { Shuffle, Sparkles, Brush, Camera, Loader2, RotateCcw } from 'lucide-react';
 import type { CubeSize } from '@core/cube/ICube';
 import { CubeViewer3D } from '@ui/components/CubeViewer3D/CubeViewer3D';
 import { StepViewer } from '@ui/components/StepViewer/StepViewer';
+import { MobileStepBar } from '@ui/components/StepViewer/MobileStepBar';
 import { ColorInputNet } from '@ui/components/ColorInputNet/ColorInputNet';
 import { CameraCapture } from '@ui/components/CameraCapture/CameraCapture';
 import { useSolveSession } from '@ui/hooks/useSolveSession';
@@ -49,13 +50,14 @@ function SolveBody({ size }: { size: 2 | 3 }) {
   const phaseSpecs = phases.map((p) => ({ start: p.start, name: p.name, hint: p.hint }));
 
   const isScrambled = !session.cube.isSolved() || session.solution.length > 0;
+  const hasSolution = session.solution.length > 0;
   const facelets = session.cube.toFaceletString();
 
   const titleKey = size === 2 ? 'solve.page2.title' : 'solve.page3.title';
   const descKey = size === 2 ? 'solve.page2.description' : 'solve.page3.description';
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4 sm:gap-6 sm:py-6 lg:py-10">
+    <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 pb-24 pt-4 sm:gap-6 sm:pb-6 sm:pt-6 lg:py-10">
       <header className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">{t(titleKey)}</h1>
         <p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">{t(descKey)}</p>
@@ -80,7 +82,15 @@ function SolveBody({ size }: { size: 2 | 3 }) {
           {size === 3 && (
             // Compact on mobile (just two pill buttons), labelled card on
             // desktop. Drops a ~50px band from the top of the phone layout.
-            <div className="flex flex-wrap items-center gap-2 text-xs sm:rounded-md sm:border sm:border-slate-200 sm:bg-slate-50 sm:px-3 sm:py-2 sm:dark:border-slate-800 sm:dark:bg-slate-950/60">
+            // Hidden entirely on mobile once a solution is active — flipping
+            // flavour from there would require re-solving anyway, so it's
+            // just visual noise above the move list.
+            <div
+              className={
+                'flex-wrap items-center gap-2 text-xs sm:rounded-md sm:border sm:border-slate-200 sm:bg-slate-50 sm:px-3 sm:py-2 sm:dark:border-slate-800 sm:dark:bg-slate-950/60 ' +
+                (hasSolution ? 'hidden sm:flex' : 'flex')
+              }
+            >
               <span className="hidden font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 sm:inline">
                 {t('solve.flavour.label')}
               </span>
@@ -113,13 +123,18 @@ function SolveBody({ size }: { size: 2 | 3 }) {
             </div>
           )}
 
+          {/* Secondary action buttons collapse to icon-only on mobile (text
+              still in DOM for screen readers); Solve keeps its label as the
+              primary action so it doesn't read as just an "indigo dot". */}
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={session.scramble}
-              className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              aria-label={t('solve.btn.scramble')}
+              className="flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 sm:px-3"
             >
-              <Shuffle size={14} /> {t('solve.btn.scramble')}
+              <Shuffle size={14} />
+              <span className="sr-only sm:not-sr-only">{t('solve.btn.scramble')}</span>
             </button>
             <button
               type="button"
@@ -127,32 +142,36 @@ function SolveBody({ size }: { size: 2 | 3 }) {
                 setPaintInitial(null);
                 setMode((m) => (m === 'paint' ? 'idle' : 'paint'));
               }}
+              aria-label={t('solve.btn.paint')}
               className={
-                'flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium shadow-sm transition ' +
+                'flex h-9 items-center justify-center gap-2 rounded-md border px-2.5 text-sm font-medium shadow-sm transition sm:px-3 ' +
                 (mode === 'paint'
                   ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-950 dark:text-indigo-200'
                   : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800')
               }
             >
-              <Brush size={14} /> {t('solve.btn.paint')}
+              <Brush size={14} />
+              <span className="sr-only sm:not-sr-only">{t('solve.btn.paint')}</span>
             </button>
             <button
               type="button"
               onClick={() => setMode((m) => (m === 'camera' ? 'idle' : 'camera'))}
+              aria-label={t('solve.btn.camera')}
               className={
-                'flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium shadow-sm transition ' +
+                'flex h-9 items-center justify-center gap-2 rounded-md border px-2.5 text-sm font-medium shadow-sm transition sm:px-3 ' +
                 (mode === 'camera'
                   ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-950 dark:text-indigo-200'
                   : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800')
               }
             >
-              <Camera size={14} /> {t('solve.btn.camera')}
+              <Camera size={14} />
+              <span className="sr-only sm:not-sr-only">{t('solve.btn.camera')}</span>
             </button>
             <button
               type="button"
               onClick={session.solve}
               disabled={session.status === 'solving' || !isScrambled}
-              className="flex items-center gap-2 rounded-md bg-indigo-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm enabled:hover:bg-indigo-600 disabled:opacity-50"
+              className="flex h-9 items-center gap-2 rounded-md bg-indigo-500 px-3 text-sm font-medium text-white shadow-sm enabled:hover:bg-indigo-600 disabled:opacity-50"
             >
               {session.status === 'solving' || session.solverInit === 'preparing' ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -168,9 +187,11 @@ function SolveBody({ size }: { size: 2 | 3 }) {
             <button
               type="button"
               onClick={session.resetToSolved}
-              className="ml-auto rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+              aria-label={t('solve.btn.reset')}
+              className="ml-auto flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 sm:px-3"
             >
-              {t('solve.btn.reset')}
+              <RotateCcw size={14} />
+              <span className="sr-only sm:not-sr-only">{t('solve.btn.reset')}</span>
             </button>
           </div>
 
@@ -250,6 +271,20 @@ function SolveBody({ size }: { size: 2 | 3 }) {
           )}
         </section>
       </div>
+
+      {/* Mobile-only fixed-bottom step bar — keeps play/prev/next reachable
+          without scrolling past the move-chip list. Only renders when a
+          solution is active and the user is in the step-viewer mode (not
+          painting or capturing). */}
+      {hasSolution && mode === 'idle' && (
+        <MobileStepBar
+          totalSteps={session.solution.length}
+          currentStep={session.step}
+          playing={session.playing}
+          onStepChange={session.requestStep}
+          onPlayingChange={session.setPlaying}
+        />
+      )}
     </div>
   );
 }
