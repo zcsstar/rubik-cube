@@ -69,7 +69,16 @@ function getWorker(): Worker | null {
   }
 }
 
-function rpc(message: Omit<RpcRequest, 'id'>): Promise<RpcResponse> | null {
+/**
+ * Distributive Omit — preserves union members instead of collapsing them.
+ * Plain `Omit<RpcInit | RpcSolve, 'id'>` would erase `facelets` because Omit
+ * Pick's the intersection of keys. The `T extends T` form is the standard
+ * trick to make a conditional type distribute over a union.
+ */
+type DistributiveOmit<T, K extends keyof T> = T extends T ? Omit<T, K> : never;
+type RpcRequestPayload = DistributiveOmit<RpcRequest, 'id'>;
+
+function rpc(message: RpcRequestPayload): Promise<RpcResponse> | null {
   const w = getWorker();
   if (!w) return null;
   const id = nextId++;
