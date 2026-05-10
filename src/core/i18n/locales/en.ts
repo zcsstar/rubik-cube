@@ -73,7 +73,7 @@ export const en: Messages = {
   // ColorInputNet
   'paint.title': 'Paint your cube',
   'paint.instruction': 'Pick a colour, then click stickers to paint.',
-  'paint.centersFixed': 'Each centre should match its face — U white, R red, F green, etc.',
+  'paint.centersFixed': 'Hold your cube in any orientation — we will align it for solving.',
   'paint.btn.reset': 'Reset',
   'paint.btn.use': 'Use this state',
   'paint.btn.cancel': 'Cancel',
@@ -84,7 +84,7 @@ export const en: Messages = {
   'validate.wrongLength': 'Expected {expected} stickers, got {got}.',
   'validate.unknownChar': 'Unknown sticker color "{ch}".',
   'validate.badCount': 'Color "{f}" appears {got} times, expected {expected}.',
-  'validate.badCenters': '{f} face centre should be "{f}" but is "{got}". Centers determine face identity.',
+  'validate.badCenters': 'Centres must use 6 different colours, with opposite faces matching: white↔yellow, green↔blue, orange↔red.',
 
   // Move descriptions
   'move.dir.cw': 'clockwise',

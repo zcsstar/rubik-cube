@@ -1,6 +1,7 @@
 import type { CubeSize } from './ICube';
 import { stickersPerFace, totalStickers, URFDLB } from './ICube';
 import type { FaceLetter } from './colors';
+import { hasValidCenterArrangement } from './canonicalize';
 
 export interface ValidationError {
   code:
@@ -60,20 +61,17 @@ export function validateFacelets(size: CubeSize, facelets: string): ValidationEr
     }
   }
 
-  // For 3x3 and 4x4, the center sticker(s) of each face must agree with the
-  // face's identity (i.e., the U face center must be U, etc.). This catches the
-  // most common input mistake — painting a face with the wrong colour pool.
-  if (size === 3) {
-    URFDLB.forEach((f, i) => {
-      const center = facelets[i * 9 + 4];
-      if (center !== f) {
-        errors.push({
-          code: 'bad_centers',
-          key: 'validate.badCenters',
-          params: { f, got: center ?? '?' },
-          message: `${f} face centre should be "${f}" but is "${center}". Centers determine face identity.`,
-        });
-      }
+  // For 3x3, the user can hold the cube in any of 24 orientations — we just
+  // need each face to have a unique centre colour AND the three pairs of
+  // opposite-face centres to be the canonical opposite-colour pairs
+  // ({U,D}, {F,B}, {L,R}). Any such input can be re-rotated into the canonical
+  // URFDLB orientation by canonicalize3x3 before solving.
+  if (size === 3 && !hasValidCenterArrangement(facelets)) {
+    errors.push({
+      code: 'bad_centers',
+      key: 'validate.badCenters',
+      message:
+        'Centres must use 6 different colours, with opposite faces using the canonical opposite pairs (white↔yellow, green↔blue, orange↔red).',
     });
   }
 

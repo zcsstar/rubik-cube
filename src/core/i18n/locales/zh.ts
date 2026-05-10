@@ -73,7 +73,7 @@ export const zh: Messages = {
   // ColorInputNet
   'paint.title': '为你的魔方填色',
   'paint.instruction': '先选一种颜色,再点击格子上色。',
-  'paint.centersFixed': '每个中心块应与所在面一致 — U 白、R 红、F 绿 等等。',
+  'paint.centersFixed': '随便用哪个朝向都可以 — 我们会自动转到求解需要的方向。',
   'paint.btn.reset': '重置',
   'paint.btn.use': '使用此状态',
   'paint.btn.cancel': '取消',
@@ -84,7 +84,7 @@ export const zh: Messages = {
   'validate.wrongLength': '应有 {expected} 个色块,实际是 {got} 个。',
   'validate.unknownChar': '未识别的颜色 "{ch}"。',
   'validate.badCount': '颜色 "{f}" 出现了 {got} 次,应当是 {expected} 次。',
-  'validate.badCenters': '{f} 面中心应该是 "{f}",但显示的是 "{got}"。中心决定面的颜色。',
+  'validate.badCenters': '六个中心必须是 6 种不同颜色,且相对面互为相反颜色:白↔黄、绿↔蓝、橙↔红。',
 
   // Move descriptions
   'move.dir.cw': '顺时针',

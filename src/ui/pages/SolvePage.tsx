@@ -10,6 +10,7 @@ import { getSolver } from '@core/solvers/SolverFactory';
 import { analyzeSolutionPhases } from '@core/solvers/analyzePhases';
 import { Cube2x2 } from '@core/cube/Cube2x2';
 import { Cube3x3 } from '@core/cube/Cube3x3';
+import { canonicalize3x3 } from '@core/cube/canonicalize';
 import { useI18n } from '@ui/i18n/I18nProvider';
 
 interface SolvePageProps {
@@ -199,7 +200,13 @@ function SolveBody({ size }: { size: 2 | 3 }) {
               size={size}
               initial={paintInitial ?? session.initial.toFaceletString()}
               onSubmit={(faceletStr) => {
-                const cube = size === 2 ? Cube2x2.fromFacelets(faceletStr) : Cube3x3.fromFacelets(faceletStr);
+                // The user may have painted the cube in any of 24 valid
+                // orientations (e.g. blue-on-top instead of white). Re-rotate
+                // to canonical URFDLB before handing it to the solver.
+                const canonical =
+                  size === 3 ? (canonicalize3x3(faceletStr) ?? faceletStr) : faceletStr;
+                const cube =
+                  size === 2 ? Cube2x2.fromFacelets(canonical) : Cube3x3.fromFacelets(canonical);
                 session.setInitial(cube);
                 setPaintInitial(null);
                 setMode('idle');
