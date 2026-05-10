@@ -6,7 +6,7 @@ import type { FaceLetter } from '@core/cube/colors';
 import { classifyColor, samplePatch } from '@core/colorRecognition/classifier';
 import { refineWithKMeans, type Sample } from '@core/colorRecognition/refine';
 import { FACE_COLORS } from '@core/cube/colors';
-import { CubeMiniNet } from '@ui/components/CubeMiniNet/CubeMiniNet';
+import { CaptureCube3D } from './CaptureCube3D';
 import { useI18n } from '@ui/i18n/I18nProvider';
 
 export interface CameraCaptureProps {
@@ -22,21 +22,6 @@ export interface CameraCaptureProps {
  * stored in the canonical URFDLB order; only the user-facing sequence changes.
  */
 const FACE_ORDER: readonly FaceLetter[] = ['U', 'F', 'R', 'B', 'L', 'D'];
-
-/**
- * For each face, the *adjacent* face whose color should appear at each edge of
- * the camera frame when the cube is held in the URFDLB-canonical orientation.
- * Used by the OrientationGuide diagram so users know exactly how to hold the
- * cube before pressing Capture.
- */
-const FRAME_NEIGHBOURS: Record<FaceLetter, { top: FaceLetter; right: FaceLetter; bottom: FaceLetter; left: FaceLetter }> = {
-  U: { top: 'B', right: 'R', bottom: 'F', left: 'L' },
-  F: { top: 'U', right: 'R', bottom: 'D', left: 'L' },
-  R: { top: 'U', right: 'B', bottom: 'D', left: 'F' },
-  B: { top: 'U', right: 'L', bottom: 'D', left: 'R' },
-  L: { top: 'U', right: 'F', bottom: 'D', left: 'B' },
-  D: { top: 'F', right: 'R', bottom: 'B', left: 'L' },
-};
 
 interface FaceCapture {
   /** Provisional per-sticker letter, row-major (used for the live preview).
@@ -107,6 +92,17 @@ export function CameraCapture({ size, onComplete, onCancel }: CameraCaptureProps
   // Build a working facelet string from collected captures plus the centre-fill
   // for unfilled faces (so the running mini-net preview always renders something).
   const previewFacelets = useMemo(() => buildFaceletString(size, captures), [size, captures]);
+
+  // Per-face sticker arrays (or null) for the 3D capture guide. Lets the cube
+  // render real detected colours on captured faces and a neutral placeholder
+  // on the rest.
+  const cubeStickers = useMemo<Record<FaceLetter, FaceLetter[] | null>>(() => {
+    const out = {} as Record<FaceLetter, FaceLetter[] | null>;
+    for (const f of URFDLB) {
+      out[f] = captures[f] ? captures[f]!.stickers : null;
+    }
+    return out;
+  }, [captures]);
 
   const captureFace = useCallback(async () => {
     const video = videoRef.current;
@@ -257,7 +253,12 @@ export function CameraCapture({ size, onComplete, onCancel }: CameraCaptureProps
         </span>
       </div>
 
-      <OrientationGuide face={currentFace} />
+      <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/50">
+        <CaptureCube3D size={size} captures={cubeStickers} activeFace={currentFace} />
+        <p className="px-3 pb-2 pt-1 text-center text-xs text-slate-600 dark:text-slate-300">
+          {t(`camera.orient.${currentFace}`)}
+        </p>
+      </div>
 
       <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-slate-950">
         <video
@@ -324,73 +325,30 @@ export function CameraCapture({ size, onComplete, onCancel }: CameraCaptureProps
         )}
       </div>
 
-      {/* Live preview of progress so far */}
-      <div className="flex items-center justify-between gap-3 rounded-md bg-slate-50 p-2 dark:bg-slate-950/50">
-        <CubeMiniNet facelets={previewFacelets} size={size} width={140} />
-        <div className="flex flex-wrap gap-1.5">
-          {FACE_ORDER.map((f, i) => {
-            const captured = captures[f] !== null;
-            const active = i === faceIndex;
-            return (
-              <div
-                key={f}
-                title={`${i + 1}. ${f}`}
-                className={
-                  'relative flex h-7 w-7 items-center justify-center rounded border text-[10px] font-semibold ' +
-                  (active
-                    ? 'border-indigo-500 ring-2 ring-indigo-300 dark:ring-indigo-700'
-                    : 'border-slate-300 dark:border-slate-700')
-                }
-                style={{ backgroundColor: FACE_COLORS[f], color: '#0f172a' }}
-              >
-                {captured ? <Check size={14} strokeWidth={3} /> : f}
-              </div>
-            );
-          })}
-        </div>
+      {/* Step-order checklist: numbered swatches show the capture sequence
+          and which faces are done. (The 3D cube above already shows what was
+          recorded, so we don't repeat the cross-net thumbnail here.) */}
+      <div className="flex flex-wrap items-center justify-center gap-1.5 rounded-md bg-slate-50 p-2 dark:bg-slate-950/50">
+        {FACE_ORDER.map((f, i) => {
+          const captured = captures[f] !== null;
+          const active = i === faceIndex;
+          return (
+            <div
+              key={f}
+              title={`${i + 1}. ${f}`}
+              className={
+                'relative flex h-7 w-7 items-center justify-center rounded border text-[10px] font-semibold ' +
+                (active
+                  ? 'border-indigo-500 ring-2 ring-indigo-300 dark:ring-indigo-700'
+                  : 'border-slate-300 dark:border-slate-700')
+              }
+              style={{ backgroundColor: FACE_COLORS[f], color: '#0f172a' }}
+            >
+              {captured ? <Check size={14} strokeWidth={3} /> : f}
+            </div>
+          );
+        })}
       </div>
-    </div>
-  );
-}
-
-/**
- * Visual guide for orienting the cube before capture: shows the target face as
- * a large colored tile, surrounded by smaller tiles indicating which adjacent
- * face's colour should appear at each edge of the camera frame. Removes the
- * "which way is up?" guessing that confused users with the bare URFDLB order.
- */
-function OrientationGuide({ face }: { face: FaceLetter }) {
-  const { t } = useI18n();
-  const n = FRAME_NEIGHBOURS[face];
-  const neighbour = (f: FaceLetter) => (
-    <div
-      className="flex h-7 w-7 items-center justify-center rounded border border-slate-300 text-[10px] font-semibold dark:border-slate-700"
-      style={{ backgroundColor: FACE_COLORS[f], color: '#0f172a' }}
-      aria-label={t(`move.face.${f}`)}
-    >
-      {f}
-    </div>
-  );
-  return (
-    <div className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/50">
-      <div className="grid grid-cols-3 grid-rows-3 items-center justify-items-center gap-1.5">
-        <div />
-        {neighbour(n.top)}
-        <div />
-        {neighbour(n.left)}
-        <div
-          className="flex h-16 w-16 items-center justify-center rounded-md border-2 border-slate-900 text-base font-bold shadow-sm dark:border-slate-100"
-          style={{ backgroundColor: FACE_COLORS[face], color: '#0f172a' }}
-          aria-label={t(`camera.face.${face}`)}
-        >
-          {face}
-        </div>
-        {neighbour(n.right)}
-        <div />
-        {neighbour(n.bottom)}
-        <div />
-      </div>
-      <p className="text-center text-xs text-slate-600 dark:text-slate-300">{t(`camera.orient.${face}`)}</p>
     </div>
   );
 }

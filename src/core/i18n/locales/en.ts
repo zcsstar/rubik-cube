@@ -134,10 +134,6 @@ export const en: Messages = {
   'camera.facing.environment': 'Switch to front camera',
   'camera.facing.user': 'Switch to back camera',
   'camera.faceCount': 'Step {n} of 6',
-  'camera.frameTop': 'top of frame',
-  'camera.frameRight': 'right of frame',
-  'camera.frameBottom': 'bottom of frame',
-  'camera.frameLeft': 'left of frame',
 
   // Tutorial
   'tutorial.step': 'Step',

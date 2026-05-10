@@ -133,10 +133,6 @@ export const zh: Messages = {
   'camera.facing.environment': '切换到前置摄像头',
   'camera.facing.user': '切换到后置摄像头',
   'camera.faceCount': '第 {n} 步,共 6 步',
-  'camera.frameTop': '画面顶部',
-  'camera.frameRight': '画面右侧',
-  'camera.frameBottom': '画面底部',
-  'camera.frameLeft': '画面左侧',
 
   // Tutorial
   'tutorial.step': '步骤',
