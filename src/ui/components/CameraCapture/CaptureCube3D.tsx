@@ -200,7 +200,12 @@ export function CaptureCube3D({ size, captures, activeFace, className }: Capture
     [size, captures],
   );
   return (
-    <div className={className ?? 'h-[220px] w-full'}>
+    <div
+      className={className ?? 'h-[220px] w-full'}
+      // Let vertical page scroll pass through on touch devices — there's no
+      // OrbitControls here, so swallowing touch would only block scrolling.
+      style={{ touchAction: 'pan-y' }}
+    >
       <Canvas flat camera={{ position: [2.4, 2.0, 2.8], fov: 35 }} dpr={[1, 2]}>
         <Suspense fallback={null}>
           <ambientLight intensity={0.85} />

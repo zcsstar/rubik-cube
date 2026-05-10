@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ICube, CubeSize } from '@core/cube/ICube';
 import type { Move } from '@core/cube/moves';
 import { invertMove, movesToString } from '@core/cube/moves';
@@ -7,6 +7,15 @@ import { Cube2x2 } from '@core/cube/Cube2x2';
 import { Cube3x3 } from '@core/cube/Cube3x3';
 
 type SolveStatus = 'idle' | 'solving' | 'ready' | 'error';
+/**
+ * Lifecycle of the solver's first-time init (Kociemba pruning tables, etc.):
+ *   idle       — nothing started yet
+ *   preparing  — init is in flight (worker spinning up tables)
+ *   ready      — init done, solves will be fast
+ *   failed     — init errored; we'll still try a sync fallback when the user
+ *                presses Solve, so this is informational only
+ */
+export type SolverInitState = 'idle' | 'preparing' | 'ready' | 'failed';
 
 interface AnimationState {
   /** The move being visually animated. */
@@ -23,6 +32,8 @@ export interface SolveSession {
   step: number;
   playing: boolean;
   status: SolveStatus;
+  /** Lifecycle of the solver's first-time init (background worker warm-up). */
+  solverInit: SolverInitState;
   error: string | null;
   /** Non-null while a slice rotation is mid-animation. */
   animating: AnimationState | null;
@@ -78,6 +89,31 @@ export function useSolveSession(size: CubeSize): SolveSession {
   const [error, setError] = useState<string | null>(null);
   const [animating, setAnimating] = useState<AnimationState | null>(null);
   const [flavour, setFlavour] = useState<SolverFlavour>('fast');
+  const [solverInit, setSolverInit] = useState<SolverInitState>('idle');
+
+  // Kick off solver init as soon as a session for this size mounts. Init
+  // is the slow part (worker warming up Kociemba tables); we want the spinner
+  // to start as soon as the user is on the Solve page, not when they tap Solve.
+  useEffect(() => {
+    let cancelled = false;
+    const solver = getSolver(size, flavour);
+    if (!solver.init) {
+      setSolverInit('ready');
+      return;
+    }
+    setSolverInit('preparing');
+    solver.init().then(
+      () => {
+        if (!cancelled) setSolverInit('ready');
+      },
+      () => {
+        if (!cancelled) setSolverInit('failed');
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [size, flavour]);
 
   const cube = useMemo(() => {
     if (solution.length === 0) return initial;
@@ -173,6 +209,7 @@ export function useSolveSession(size: CubeSize): SolveSession {
     step,
     playing,
     status,
+    solverInit,
     error,
     animating,
     flavour,

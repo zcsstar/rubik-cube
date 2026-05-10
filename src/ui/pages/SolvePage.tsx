@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Shuffle, Sparkles, Brush, Camera } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Shuffle, Sparkles, Brush, Camera, Loader2 } from 'lucide-react';
 import type { CubeSize } from '@core/cube/ICube';
 import { CubeViewer3D } from '@ui/components/CubeViewer3D/CubeViewer3D';
 import { StepViewer } from '@ui/components/StepViewer/StepViewer';
 import { ColorInputNet } from '@ui/components/ColorInputNet/ColorInputNet';
 import { CameraCapture } from '@ui/components/CameraCapture/CameraCapture';
 import { useSolveSession } from '@ui/hooks/useSolveSession';
-import { getSolver } from '@core/solvers/SolverFactory';
 import { analyzeSolutionPhases } from '@core/solvers/analyzePhases';
 import { Cube2x2 } from '@core/cube/Cube2x2';
 import { Cube3x3 } from '@core/cube/Cube3x3';
@@ -37,23 +36,6 @@ export function SolvePage({ size }: SolvePageProps) {
 function SolveBody({ size }: { size: 2 | 3 }) {
   const { t } = useI18n();
   const session = useSolveSession(size);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const solver = getSolver(size);
-        await solver.init?.();
-      } catch {
-        if (!cancelled) {
-          // ignore
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [size]);
 
   type Mode = 'idle' | 'paint' | 'camera';
   const [mode, setMode] = useState<Mode>('idle');
@@ -164,8 +146,16 @@ function SolveBody({ size }: { size: 2 | 3 }) {
               disabled={session.status === 'solving' || !isScrambled}
               className="flex items-center gap-2 rounded-md bg-indigo-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm enabled:hover:bg-indigo-600 disabled:opacity-50"
             >
-              <Sparkles size={14} />
-              {session.status === 'solving' ? t('solve.btn.solving') : t('solve.btn.solve')}
+              {session.status === 'solving' || session.solverInit === 'preparing' ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Sparkles size={14} />
+              )}
+              {session.status === 'solving'
+                ? t('solve.btn.solving')
+                : session.solverInit === 'preparing'
+                  ? t('solve.btn.preparing')
+                  : t('solve.btn.solve')}
             </button>
             <button
               type="button"
@@ -238,8 +228,15 @@ function SolveBody({ size }: { size: 2 | 3 }) {
                   <li dangerouslySetInnerHTML={{ __html: t('solve.step3') }} />
                 </ol>
               </div>
-              <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-900">
-                {session.status === 'solving' ? t('solve.prompt.solving') : t('solve.prompt.initial')}
+              <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-900">
+                {(session.status === 'solving' || session.solverInit === 'preparing') && (
+                  <Loader2 size={14} className="animate-spin" />
+                )}
+                {session.status === 'solving'
+                  ? t('solve.prompt.solving')
+                  : session.solverInit === 'preparing'
+                    ? t('solve.prompt.preparing')
+                    : t('solve.prompt.initial')}
               </div>
             </div>
           )}

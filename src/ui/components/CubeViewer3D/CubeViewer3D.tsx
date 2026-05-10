@@ -198,7 +198,12 @@ export function CubeViewer3D({
   className,
 }: CubeViewer3DProps) {
   return (
-    <div className={className ?? 'h-[360px] w-full'}>
+    <div
+      className={className ?? 'h-[360px] w-full'}
+      // Let vertical page scroll pass through the canvas on touch devices.
+      // OrbitControls still rotates the cube on horizontal / two-finger drag.
+      style={{ touchAction: 'pan-y' }}
+    >
       <Canvas flat camera={{ position: [2.4, 2.0, 2.8], fov: 35 }} dpr={[1, 2]}>
         <Suspense fallback={null}>
           <ambientLight intensity={0.8} />
