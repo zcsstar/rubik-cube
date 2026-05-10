@@ -73,7 +73,7 @@ export const zh: Messages = {
   // ColorInputNet
   'paint.title': '为你的魔方填色',
   'paint.instruction': '先选一种颜色,再点击格子上色。',
-  'paint.centersFixed': '中心块已固定为该面颜色。',
+  'paint.centersFixed': '每个中心块应与所在面一致 — U 白、R 红、F 绿 等等。',
   'paint.btn.reset': '重置',
   'paint.btn.use': '使用此状态',
   'paint.btn.cancel': '取消',
@@ -110,7 +110,7 @@ export const zh: Messages = {
 
   // Camera
   'camera.title': '相机扫描你的魔方',
-  'camera.hint': '将一个面正对相机,然后点击拍摄。重复六次,扫描所有面。',
+  'camera.hint': '按下方示意图摆好魔方方向,然后点击拍摄。',
   'camera.permissionDenied': '未授予相机权限。请使用手动填色,或在浏览器设置中开启相机访问。',
   'camera.unsupported': '你的浏览器不支持相机访问。',
   'camera.face.U': '白色面 (顶)',
@@ -119,6 +119,12 @@ export const zh: Messages = {
   'camera.face.B': '蓝色面 (后)',
   'camera.face.R': '红色面 (右)',
   'camera.face.L': '橙色面 (左)',
+  'camera.orient.U': '把魔方往后倾,让白色顶面对着相机。绿色面留在画面底部。',
+  'camera.orient.F': '让绿色面正对相机。白色面在画面顶部。',
+  'camera.orient.R': '转动魔方让红色面对相机。白色面保持在顶部。',
+  'camera.orient.B': '转动魔方让蓝色面对相机。白色面保持在顶部。',
+  'camera.orient.L': '转动魔方让橙色面对相机。白色面保持在顶部。',
+  'camera.orient.D': '把魔方往前倾,让黄色底面对相机。绿色面留在画面顶部。',
   'camera.btn.capture': '拍摄',
   'camera.btn.retake': '重拍',
   'camera.btn.next': '下一面',
@@ -126,7 +132,11 @@ export const zh: Messages = {
   'camera.btn.cancel': '取消',
   'camera.facing.environment': '切换到前置摄像头',
   'camera.facing.user': '切换到后置摄像头',
-  'camera.faceCount': '第 {n} 面,共 6 面',
+  'camera.faceCount': '第 {n} 步,共 6 步',
+  'camera.frameTop': '画面顶部',
+  'camera.frameRight': '画面右侧',
+  'camera.frameBottom': '画面底部',
+  'camera.frameLeft': '画面左侧',
 
   // Tutorial
   'tutorial.step': '步骤',

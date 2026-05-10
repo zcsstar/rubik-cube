@@ -73,7 +73,7 @@ export const en: Messages = {
   // ColorInputNet
   'paint.title': 'Paint your cube',
   'paint.instruction': 'Pick a colour, then click stickers to paint.',
-  'paint.centersFixed': 'Centres are fixed by face identity.',
+  'paint.centersFixed': 'Each centre should match its face — U white, R red, F green, etc.',
   'paint.btn.reset': 'Reset',
   'paint.btn.use': 'Use this state',
   'paint.btn.cancel': 'Cancel',
@@ -110,7 +110,7 @@ export const en: Messages = {
 
   // Camera
   'camera.title': 'Capture your cube',
-  'camera.hint': 'Hold one face flat in front of the camera and tap Capture. Repeat for all six faces.',
+  'camera.hint': 'Follow the diagram to orient the cube, then tap Capture.',
   'camera.permissionDenied':
     'Camera permission denied. Use the paint mode instead, or enable camera access in your browser settings.',
   'camera.unsupported': 'Your browser does not support camera access.',
@@ -120,6 +120,12 @@ export const en: Messages = {
   'camera.face.B': 'Blue face (back)',
   'camera.face.R': 'Red face (right)',
   'camera.face.L': 'Orange face (left)',
+  'camera.orient.U': 'Tilt the cube back so the WHITE top faces the camera. Keep GREEN at the bottom of the frame.',
+  'camera.orient.F': 'Hold the GREEN face toward the camera. Keep WHITE at the top of the frame.',
+  'camera.orient.R': 'Rotate the cube so the RED face faces the camera. Keep WHITE at the top.',
+  'camera.orient.B': 'Rotate the cube so the BLUE face faces the camera. Keep WHITE at the top.',
+  'camera.orient.L': 'Rotate the cube so the ORANGE face faces the camera. Keep WHITE at the top.',
+  'camera.orient.D': 'Tilt the cube forward so the YELLOW bottom faces the camera. Keep GREEN at the top of the frame.',
   'camera.btn.capture': 'Capture',
   'camera.btn.retake': 'Retake',
   'camera.btn.next': 'Next face',
@@ -127,7 +133,11 @@ export const en: Messages = {
   'camera.btn.cancel': 'Cancel',
   'camera.facing.environment': 'Switch to front camera',
   'camera.facing.user': 'Switch to back camera',
-  'camera.faceCount': 'Face {n} of 6',
+  'camera.faceCount': 'Step {n} of 6',
+  'camera.frameTop': 'top of frame',
+  'camera.frameRight': 'right of frame',
+  'camera.frameBottom': 'bottom of frame',
+  'camera.frameLeft': 'left of frame',
 
   // Tutorial
   'tutorial.step': 'Step',

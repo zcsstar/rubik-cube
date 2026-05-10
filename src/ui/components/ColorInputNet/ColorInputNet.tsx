@@ -30,11 +30,6 @@ export function ColorInputNet({ size, initial, onSubmit, onCancel }: ColorInputN
   const N = size;
 
   const setSticker = (absIndex: number, letter: FaceLetter) => {
-    if (size === 3) {
-      // Block edits to centre stickers (one per face at index 4).
-      const localIdx = absIndex % 9;
-      if (localIdx === 4) return;
-    }
     setFacelets((s) => s.substring(0, absIndex) + letter + s.substring(absIndex + 1));
   };
 
@@ -153,18 +148,13 @@ function NetLayout({
         {Array.from({ length: size * size }, (_, i) => {
           const abs = off + i;
           const letter = facelets[abs] as FaceLetter;
-          const isCentre = size === 3 && i === 4;
           return (
             <button
               key={i}
               type="button"
               onClick={() => onPaint(abs, paint)}
-              disabled={isCentre}
               style={{ backgroundColor: FACE_COLORS[letter] }}
-              className={
-                'aspect-square rounded-sm border border-slate-300 transition disabled:cursor-not-allowed disabled:opacity-95 dark:border-slate-700 ' +
-                (isCentre ? '' : 'hover:scale-105 hover:shadow-md')
-              }
+              className="aspect-square rounded-sm border border-slate-300 transition hover:scale-105 hover:shadow-md dark:border-slate-700"
             />
           );
         })}
