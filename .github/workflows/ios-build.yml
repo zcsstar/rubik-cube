@@ -1,0 +1,60 @@
+name: iOS Build (verify)
+
+# Builds the Capacitor iOS project on a macOS runner without code signing,
+# so we know the native shell still compiles after a change. Triggered on
+# every push to main (so it doubles as a regression gate) and manually via
+# the Actions tab.
+#
+# This workflow does NOT produce a signed IPA or upload to TestFlight.
+# Those steps require an Apple Developer Program account ($99/yr) and the
+# matching secrets (signing cert, provisioning profile, App Store Connect
+# API key). Add a separate release workflow once those are in place.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.ts'
+      - 'vite.config.ts'
+      - 'ios/**'
+      - '.github/workflows/ios-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web bundle
+        run: npm run build
+
+      - name: Sync iOS native assets
+        run: npx cap sync ios
+
+      - name: Build iOS app for simulator (unsigned)
+        working-directory: ios/App
+        run: |
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            build
