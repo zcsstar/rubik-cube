@@ -19,6 +19,9 @@ const PracticePage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import('@ui/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
 );
+const PrivacyPage = lazy(() =>
+  import('@ui/pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage })),
+);
 
 function PageFallback() {
   return <div className="mx-auto max-w-5xl px-4 py-10" aria-busy="true" />;
@@ -73,8 +76,14 @@ function Layout({ children }: { children: React.ReactNode }) {
       <main className="flex-1">
         <Suspense fallback={<PageFallback />}>{children}</Suspense>
       </main>
-      <footer className="mx-auto max-w-5xl px-4 py-6 text-center text-xs text-slate-400">
-        {t('app.footer.line', { year: new Date().getFullYear() })}
+      <footer className="mx-auto flex max-w-5xl flex-col items-center gap-1 px-4 py-6 text-center text-xs text-slate-400">
+        <span>{t('app.footer.line', { year: new Date().getFullYear() })}</span>
+        <Link
+          to="/privacy"
+          className="text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300"
+        >
+          {t('app.footer.privacy')}
+        </Link>
       </footer>
     </div>
   );
@@ -92,6 +101,7 @@ export default function App() {
         <Route path="/learn/3" element={<TutorialPage size={3} />} />
         <Route path="/practice/2" element={<PracticePage size={2} />} />
         <Route path="/practice/3" element={<PracticePage size={3} />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Layout>

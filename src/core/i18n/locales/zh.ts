@@ -7,6 +7,7 @@ export const zh: Messages = {
   'app.lead':
     '输入你的魔方状态,获取清晰的逐步解法,按自己的节奏学习入门方法。免费、浏览器内运行、无需注册。',
   'app.footer.line': 'Cubist · 魔方解法工具 · Cheez @{year}',
+  'app.footer.privacy': '隐私政策',
 
   // Navigation
   'nav.solve': '解法',

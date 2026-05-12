@@ -7,6 +7,7 @@ export const en: Messages = {
   'app.lead':
     'Drop in your cube state, get a clean step-by-step solution, and learn the beginner methods at your own pace. Free, in your browser, no sign-up.',
   'app.footer.line': "Cubist · Rubik's Cube Solver · Cheez @{year}",
+  'app.footer.privacy': 'Privacy',
 
   // Navigation
   'nav.solve': 'Solve',
