@@ -1,12 +1,28 @@
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Link, NavLink } from 'react-router-dom';
-import { HomePage } from '@ui/pages/HomePage';
-import { SolvePage } from '@ui/pages/SolvePage';
-import { TutorialPage } from '@ui/pages/TutorialPage';
-import { PracticePage } from '@ui/pages/PracticePage';
-import { NotFoundPage } from '@ui/pages/NotFoundPage';
 import { Logo } from '@ui/components/Logo';
 import { LocaleSwitcher } from '@ui/components/LocaleSwitcher/LocaleSwitcher';
 import { useI18n } from '@ui/i18n/I18nProvider';
+
+const HomePage = lazy(() =>
+  import('@ui/pages/HomePage').then((m) => ({ default: m.HomePage })),
+);
+const SolvePage = lazy(() =>
+  import('@ui/pages/SolvePage').then((m) => ({ default: m.SolvePage })),
+);
+const TutorialPage = lazy(() =>
+  import('@ui/pages/TutorialPage').then((m) => ({ default: m.TutorialPage })),
+);
+const PracticePage = lazy(() =>
+  import('@ui/pages/PracticePage').then((m) => ({ default: m.PracticePage })),
+);
+const NotFoundPage = lazy(() =>
+  import('@ui/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
+);
+
+function PageFallback() {
+  return <div className="mx-auto max-w-5xl px-4 py-10" aria-busy="true" />;
+}
 
 function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
@@ -54,7 +70,9 @@ function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="flex-1">{children}</main>
+      <main className="flex-1">
+        <Suspense fallback={<PageFallback />}>{children}</Suspense>
+      </main>
       <footer className="mx-auto max-w-5xl px-4 py-6 text-center text-xs text-slate-400">
         {t('app.footer.line', { year: new Date().getFullYear() })}
       </footer>

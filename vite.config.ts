@@ -47,7 +47,8 @@ export default defineConfig({
       },
       workbox: {
         // Precache every built asset so the app is installable + fully offline.
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
+        // woff (legacy) is intentionally excluded — every SW-capable browser supports woff2.
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         // The static-host fallback (404.html → index.html) handles deep-link
         // refreshes on first load; once the SW has cached index.html, navigation
         // requests resolve from cache directly.
