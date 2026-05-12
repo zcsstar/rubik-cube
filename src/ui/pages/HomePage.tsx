@@ -4,6 +4,7 @@ import type { CubeSize } from '@core/cube/ICube';
 import { Cube3x3 } from '@core/cube/Cube3x3';
 import { CubeViewer3D } from '@ui/components/CubeViewer3D/CubeViewer3D';
 import { useI18n } from '@ui/i18n/I18nProvider';
+import { useBottomBanner } from '@/ads/useBottomBanner';
 
 interface CubeOffer {
   size: CubeSize;
@@ -27,6 +28,7 @@ const cubeOffers: CubeOffer[] = [
 
 export function HomePage() {
   const { t } = useI18n();
+  useBottomBanner();
   const heroFacelets = Cube3x3.solved().toFaceletString();
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-10 px-4 py-10">

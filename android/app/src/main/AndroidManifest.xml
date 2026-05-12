@@ -33,6 +33,13 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- AdMob app ID. The value resolves via @string/admob_app_id; see
+             strings.xml. Required by the Google Mobile Ads SDK; the app
+             will crash on launch if this is missing. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="@string/admob_app_id" />
     </application>
 
     <!-- Permissions -->

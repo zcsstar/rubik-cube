@@ -11,6 +11,7 @@ import { Cube2x2 } from '@core/cube/Cube2x2';
 import { Cube3x3 } from '@core/cube/Cube3x3';
 import type { ICube, CubeSize } from '@core/cube/ICube';
 import { useI18n } from '@ui/i18n/I18nProvider';
+import { useBottomBanner } from '@/ads/useBottomBanner';
 
 export interface TutorialPageProps {
   size: CubeSize;
@@ -41,6 +42,7 @@ export function TutorialPage({ size }: TutorialPageProps) {
 
 function TutorialBody({ tutorial }: { tutorial: Tutorial }) {
   const { t } = useI18n();
+  useBottomBanner();
   const [stepId, setStepId] = useState<string>(() => tutorial.steps[0]!.id);
   const [caseId, setCaseId] = useState<string>(() => tutorial.steps[0]!.cases[0]!.id);
 

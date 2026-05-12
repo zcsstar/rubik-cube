@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { maybeShowPostSolveAd } from '@/ads/admob';
 import { Shuffle, Sparkles, Brush, Camera, Loader2, RotateCcw } from 'lucide-react';
 import type { CubeSize } from '@core/cube/ICube';
 import { CubeViewer3D } from '@ui/components/CubeViewer3D/CubeViewer3D';
@@ -52,6 +53,15 @@ function SolveBody({ size }: { size: 2 | 3 }) {
   const isScrambled = !session.cube.isSolved() || session.solution.length > 0;
   const hasSolution = session.solution.length > 0;
   const facelets = session.cube.toFaceletString();
+
+  // Trigger a (capped) interstitial when the user finishes stepping through
+  // a solution. Native-only; the helper itself enforces "first solve is
+  // free" + a 5-minute cooldown so this fires sparingly.
+  const solveComplete =
+    session.solution.length > 0 && session.step === session.solution.length;
+  useEffect(() => {
+    if (solveComplete) void maybeShowPostSolveAd();
+  }, [solveComplete]);
 
   const titleKey = size === 2 ? 'solve.page2.title' : 'solve.page3.title';
   const descKey = size === 2 ? 'solve.page2.description' : 'solve.page3.description';

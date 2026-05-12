@@ -21,6 +21,12 @@
 
 html, body, #root { height: 100%; }
 
+/* Native ad banner overlay: AdMob renders a native view above the WebView
+ * at the bottom of the screen. We push the app's footer up by this amount
+ * so it isn't covered. Set to 0 on web and when no banner is shown. */
+:root { --ad-banner-h: 0px; }
+body { padding-bottom: var(--ad-banner-h); }
+
 @media (prefers-color-scheme: dark) {
   html { color-scheme: dark; }
 }
