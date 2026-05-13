@@ -12,7 +12,10 @@
     "lint": "eslint .",
     "cap:sync": "npm run build && cap sync",
     "cap:android": "npm run build && cap sync android && cap open android",
-    "cap:ios": "npm run build && cap sync ios && cap open ios"
+    "cap:ios": "npm run build && cap sync ios && cap open ios",
+    "assets:pwa": "pwa-assets-generator && node scripts/move-pwa-assets.mjs",
+    "assets:native": "capacitor-assets generate --iconBackgroundColor #020617 --iconBackgroundColorDark #020617 --splashBackgroundColor #020617 --splashBackgroundColorDark #020617",
+    "assets:all": "npm run assets:pwa && npm run assets:native"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",
@@ -33,6 +36,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.3.4",
     "@tailwindcss/vite": "^4.0.0",
     "@testing-library/jest-dom": "^6.6.3",
