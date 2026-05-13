@@ -10,6 +10,7 @@ import { CubeViewer3D } from '@ui/components/CubeViewer3D/CubeViewer3D';
 import { MovePad } from '@ui/components/MovePad/MovePad';
 import { MoveCard } from '@ui/components/MoveCard/MoveCard';
 import { CubeMiniNet } from '@ui/components/CubeMiniNet/CubeMiniNet';
+import { SizeSelector } from '@ui/components/SizeSelector/SizeSelector';
 import { usePracticeSession } from '@ui/hooks/usePracticeSession';
 import { useI18n } from '@ui/i18n/I18nProvider';
 
@@ -75,31 +76,46 @@ function PracticeBody({ tutorial, size }: { tutorial: Tutorial; size: CubeSize }
   const session = usePracticeSession(size, initial, (cube) => cube.isSolved());
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 lg:py-10">
+    <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 sm:gap-5 sm:py-6 lg:py-10">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+        <SizeSelector section="practice" sizes={[2, 3]} />
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">
           {t('practice.title')}
         </h1>
-        <p className="text-sm text-slate-600 dark:text-slate-300">{t('practice.blurb')}</p>
+        <p className="hidden text-sm text-slate-600 dark:text-slate-300 sm:block">{t('practice.blurb')}</p>
       </header>
 
       <StepPicker tutorial={tutorial} activeId={stepId} onChange={setStepId} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="flex flex-col gap-3">
-          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-3 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-950">
+      {/* Mobile: single column. Cube on top (capped height so MovePad fits
+          without scrolling), status compact, MovePad immediately below.
+          Desktop: 2-column with cube/status/actions on the left and
+          CaseInfo + MovePad on the right. */}
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-6">
+        <section className="flex flex-col gap-2 lg:order-1 lg:gap-3">
+          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-0 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-950 sm:p-3">
             <CubeViewer3D
               facelets={session.displayCube.toFaceletString()}
               size={size}
               animation={session.animating}
               onAnimationEnd={session.finishAnimation}
-              className="aspect-square w-full"
+              // Cap on phones so cube + status + MovePad share one screen.
+              className="mx-auto aspect-square w-full max-w-[34vh] sm:max-w-[42vh] lg:max-w-none"
             />
           </div>
           <SolveStatus
             reached={session.reached}
             historyCount={session.history.length}
             optimalCount={parseMoves(activeCase.algorithm).length}
+          />
+        </section>
+
+        <section className="flex flex-col gap-3 lg:order-2">
+          <MovePad
+            size={size}
+            onMove={session.applyMove}
+            onUndo={session.history.length > 0 ? session.undo : undefined}
+            disabled={!!session.animating}
           />
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -126,19 +142,10 @@ function PracticeBody({ tutorial, size }: { tutorial: Tutorial; size: CubeSize }
               {showAnswer ? t('practice.btn.hideAnswer') : t('practice.btn.showAnswer')}
             </button>
           </div>
-        </section>
-
-        <section className="flex flex-col gap-4">
           <CaseInfo
             caseData={activeCase}
             size={size}
             showAnswer={showAnswer}
-          />
-          <MovePad
-            size={size}
-            onMove={session.applyMove}
-            onUndo={session.history.length > 0 ? session.undo : undefined}
-            disabled={!!session.animating}
           />
         </section>
       </div>

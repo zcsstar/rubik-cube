@@ -7,6 +7,7 @@ import { StepViewer } from '@ui/components/StepViewer/StepViewer';
 import { MobileStepBar } from '@ui/components/StepViewer/MobileStepBar';
 import { ColorInputNet } from '@ui/components/ColorInputNet/ColorInputNet';
 import { CameraCapture } from '@ui/components/CameraCapture/CameraCapture';
+import { SizeSelector } from '@ui/components/SizeSelector/SizeSelector';
 import { useSolveSession } from '@ui/hooks/useSolveSession';
 import { analyzeSolutionPhases } from '@core/solvers/analyzePhases';
 import { Cube2x2 } from '@core/cube/Cube2x2';
@@ -23,11 +24,12 @@ export function SolvePage({ size }: SolvePageProps) {
 
   if (size === 4) {
     return (
-      <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">
+      <div className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 py-12 text-center">
+        <SizeSelector section="solve" sizes={[2, 3, 4]} />
+        <h1 className="mt-4 text-2xl font-semibold text-slate-900 dark:text-slate-50">
           {t('solve.page4.title')}
         </h1>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t('solve.page4.description')}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t('solve.page4.description')}</p>
       </div>
     );
   }
@@ -68,7 +70,8 @@ function SolveBody({ size }: { size: 2 | 3 }) {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 pb-24 pt-4 sm:gap-6 sm:pb-6 sm:pt-6 lg:py-10">
-      <header className="flex flex-col gap-1">
+      <header className="flex flex-col gap-2">
+        <SizeSelector section="solve" sizes={[2, 3, 4]} />
         <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">{t(titleKey)}</h1>
         <p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">{t(descKey)}</p>
       </header>

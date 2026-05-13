@@ -10,6 +10,7 @@ export const zh: Messages = {
   'app.footer.privacy': '隐私政策',
 
   // Navigation
+  'nav.home': '首页',
   'nav.solve': '解法',
   'nav.learn': '学习',
   'nav.practice': '练习',
@@ -17,6 +18,7 @@ export const zh: Messages = {
   'nav.cube3': '三阶',
   'nav.cube4': '四阶',
   'nav.language': '语言',
+  'nav.size.aria': '魔方阶数',
 
   // Home page
   'home.cta.solve': '解我的魔方',

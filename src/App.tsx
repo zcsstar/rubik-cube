@@ -1,7 +1,8 @@
 import { Suspense, lazy } from 'react';
-import { Routes, Route, Link, NavLink } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
 import { Logo } from '@ui/components/Logo';
 import { LocaleSwitcher } from '@ui/components/LocaleSwitcher/LocaleSwitcher';
+import { BottomTabBar } from '@ui/components/BottomTabBar/BottomTabBar';
 import { useI18n } from '@ui/i18n/I18nProvider';
 
 const HomePage = lazy(() =>
@@ -29,48 +30,22 @@ function PageFallback() {
 
 function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
-  const navLink = ({ isActive }: { isActive: boolean }) =>
-    'rounded-md px-2.5 py-1 text-sm font-medium transition ' +
-    (isActive
-      ? 'text-slate-900 dark:text-slate-50'
-      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100');
   return (
     <div className="min-h-full flex flex-col">
-      <header className="border-b border-slate-200 bg-white/70 backdrop-blur dark:border-slate-800 dark:bg-slate-950/70">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <Link to="/" className="flex items-center gap-2 text-slate-900 dark:text-slate-50">
-            <Logo size={26} />
+      <header
+        className="sticky top-0 z-20 border-b border-slate-200 bg-white/85 backdrop-blur dark:border-slate-800 dark:bg-slate-950/85"
+        style={{ paddingTop: 'var(--safe-top)' }}
+      >
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2.5">
+          <Link
+            to="/"
+            className="flex items-center gap-2 text-slate-900 dark:text-slate-50"
+            aria-label={t('app.title')}
+          >
+            <Logo size={28} />
             <span className="text-base font-semibold tracking-tight">{t('app.title')}</span>
           </Link>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <nav className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="flex items-center gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  {t('nav.solve')}
-                </span>
-                <NavLink to="/solve/2" className={navLink}>{t('nav.cube2')}</NavLink>
-                <NavLink to="/solve/3" className={navLink}>{t('nav.cube3')}</NavLink>
-                <NavLink to="/solve/4" className={navLink} end>{t('nav.cube4')}</NavLink>
-              </span>
-              <span className="hidden h-4 w-px bg-slate-200 sm:inline-block dark:bg-slate-700" />
-              <span className="flex items-center gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  {t('nav.learn')}
-                </span>
-                <NavLink to="/learn/2" className={navLink}>{t('nav.cube2')}</NavLink>
-                <NavLink to="/learn/3" className={navLink}>{t('nav.cube3')}</NavLink>
-              </span>
-              <span className="hidden h-4 w-px bg-slate-200 sm:inline-block dark:bg-slate-700" />
-              <span className="flex items-center gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  {t('nav.practice')}
-                </span>
-                <NavLink to="/practice/2" className={navLink}>{t('nav.cube2')}</NavLink>
-                <NavLink to="/practice/3" className={navLink}>{t('nav.cube3')}</NavLink>
-              </span>
-            </nav>
-            <LocaleSwitcher />
-          </div>
+          <LocaleSwitcher />
         </div>
       </header>
       <main className="flex-1">
@@ -85,6 +60,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           {t('app.footer.privacy')}
         </Link>
       </footer>
+      <BottomTabBar />
     </div>
   );
 }

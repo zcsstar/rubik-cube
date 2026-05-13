@@ -21,11 +21,23 @@
 
 html, body, #root { height: 100%; }
 
-/* Native ad banner overlay: AdMob renders a native view above the WebView
- * at the bottom of the screen. We push the app's footer up by this amount
- * so it isn't covered. Set to 0 on web and when no banner is shown. */
-:root { --ad-banner-h: 0px; }
-body { padding-bottom: var(--ad-banner-h); }
+/* Safe-area + chrome dimensions. The native shell uses viewport-fit=cover
+ * (so content stretches edge-to-edge under the notch / dynamic island).
+ * We re-introduce safe insets at the chrome layer instead of system-wide
+ * so we can keep the WebView background bleeding under the status bar
+ * for that "native app" look. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tab-bar-h: 56px;
+  --ad-banner-h: 0px;
+}
+
+/* The native ad banner sits at the very bottom of the screen, the tab bar
+ * sits above it, and any in-content footers sit above both. */
+body {
+  padding-bottom: calc(var(--ad-banner-h) + var(--tab-bar-h) + var(--safe-bottom));
+}
 
 @media (prefers-color-scheme: dark) {
   html { color-scheme: dark; }

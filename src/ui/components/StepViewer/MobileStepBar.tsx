@@ -29,8 +29,10 @@ export function MobileStepBar({
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-slate-200 bg-white/95 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:hidden"
-      style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
+      className="fixed inset-x-0 z-40 flex items-center gap-2 border-t border-slate-200 bg-white/95 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:hidden"
+      // Sit above the bottom tab bar (and the ad banner if shown) so step
+      // controls remain reachable while the page scrolls.
+      style={{ bottom: 'calc(var(--ad-banner-h) + var(--tab-bar-h) + var(--safe-bottom))' }}
       role="toolbar"
       aria-label={t('player.title')}
     >

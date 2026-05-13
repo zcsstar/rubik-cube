@@ -10,6 +10,7 @@ export const en: Messages = {
   'app.footer.privacy': 'Privacy',
 
   // Navigation
+  'nav.home': 'Home',
   'nav.solve': 'Solve',
   'nav.learn': 'Learn',
   'nav.practice': 'Practice',
@@ -17,6 +18,7 @@ export const en: Messages = {
   'nav.cube3': '3×3',
   'nav.cube4': '4×4',
   'nav.language': 'Language',
+  'nav.size.aria': 'Cube size',
 
   // Home page
   'home.cta.solve': 'Solve my cube',

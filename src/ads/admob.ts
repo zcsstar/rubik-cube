@@ -15,6 +15,7 @@
 import { Capacitor } from '@capacitor/core';
 import {
   AdMob,
+  BannerAdPluginEvents,
   BannerAdPosition,
   BannerAdSize,
   type BannerAdOptions,
@@ -77,12 +78,12 @@ async function ensureInitialized(): Promise<void> {
     }
 
     // Banner size events keep the footer inset in sync with the actual
-    // ad height (adaptive banners vary by device).
-    AdMob.addListener('bannerViewSizeChanged' as never, ((info: {
-      height: number;
-    }) => {
-      if (bannerVisible) setBannerInsetPx(info.height ?? 0);
-    }) as never).catch(() => {
+    // ad height (adaptive banners vary by device + orientation). The native
+    // banner is a native overlay drawn on top of the WebView, so we have
+    // to reserve --ad-banner-h px of CSS space at the bottom ourselves.
+    AdMob.addListener(BannerAdPluginEvents.SizeChanged, (size) => {
+      if (bannerVisible && size.height) setBannerInsetPx(size.height);
+    }).catch(() => {
       // Older plugin versions may not emit this event; safe to ignore.
     });
 
@@ -166,8 +167,11 @@ export async function showBottomBanner(): Promise<void> {
   try {
     await AdMob.showBanner(options);
     bannerVisible = true;
-    // Optimistic default; the size-changed listener will refine it.
-    setBannerInsetPx(60);
+    // Optimistic default — adaptive banner is up to ~90px tall depending on
+    // device + orientation. The SizeChanged listener refines this once the
+    // ad actually renders; the upper bound here keeps content off the ad
+    // until then.
+    setBannerInsetPx(90);
   } catch (err) {
     console.warn('[ads] showBanner failed', err);
   }

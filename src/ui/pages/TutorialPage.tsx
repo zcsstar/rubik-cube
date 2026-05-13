@@ -12,6 +12,7 @@ import { Cube3x3 } from '@core/cube/Cube3x3';
 import type { ICube, CubeSize } from '@core/cube/ICube';
 import { useI18n } from '@ui/i18n/I18nProvider';
 import { useBottomBanner } from '@/ads/useBottomBanner';
+import { SizeSelector } from '@ui/components/SizeSelector/SizeSelector';
 
 export interface TutorialPageProps {
   size: CubeSize;
@@ -61,6 +62,7 @@ function TutorialBody({ tutorial }: { tutorial: Tutorial }) {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 lg:py-10">
       <header className="flex flex-col gap-2">
+        <SizeSelector section="learn" sizes={[2, 3]} />
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
           {tutorial.title}
         </h1>
