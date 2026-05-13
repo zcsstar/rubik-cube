@@ -6,10 +6,8 @@
  * The copy below is the authoritative version (English). Keep it accurate
  * to what the code actually does — both stores cross-check the policy
  * against the data your build accesses.
- *
- * Contact email is a placeholder. Replace before store submission.
  */
-const CONTACT_EMAIL = 'privacy@cubist.app';
+const CONTACT_EMAIL = 'nzcheez@gmail.com';
 const LAST_UPDATED = '2026-05-13';
 
 export function PrivacyPage() {
