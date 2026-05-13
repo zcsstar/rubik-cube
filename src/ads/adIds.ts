@@ -21,15 +21,16 @@ const test: Record<'ios' | 'android', AdIdSet> = {
   },
 };
 
-// TODO before launch: paste the real unit IDs from your AdMob console.
+// Real AdMob unit IDs (publisher 2269650446819543). Test IDs are still
+// served by default — set VITE_USE_PROD_ADS=1 at build time to switch.
 const prod: Record<'ios' | 'android', AdIdSet> = {
   ios: {
-    banner: '',
-    interstitial: '',
+    banner: 'ca-app-pub-2269650446819543/5968405918',
+    interstitial: 'ca-app-pub-2269650446819543/1808229661',
   },
   android: {
-    banner: '',
-    interstitial: '',
+    banner: 'ca-app-pub-2269650446819543/8237906648',
+    interstitial: 'ca-app-pub-2269650446819543/2901819480',
   },
 };
 

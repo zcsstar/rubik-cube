@@ -4,8 +4,6 @@
     <string name="title_activity_main">Cubist</string>
     <string name="package_name">com.cheez.cubist</string>
     <string name="custom_url_scheme">com.cheez.cubist</string>
-    <!-- AdMob: this is Google's documented sample app ID for testing. Replace
-         with your real AdMob app ID from https://apps.admob.com (Apps → App
-         settings → App ID) before publishing. The format is ca-app-pub-XXXX~YYYY. -->
-    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
+    <!-- AdMob Android app ID (apps.admob.com → Cubist (Android) → App settings). -->
+    <string name="admob_app_id">ca-app-pub-2269650446819543~5033764048</string>
 </resources>
