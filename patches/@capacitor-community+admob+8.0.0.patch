@@ -1,0 +1,28 @@
+diff --git a/node_modules/@capacitor-community/admob/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java b/node_modules/@capacitor-community/admob/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
+index c629139..9fd403a 100644
+--- a/node_modules/@capacitor-community/admob/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
++++ b/node_modules/@capacitor-community/admob/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
+@@ -103,17 +103,20 @@ public class BannerExecutor extends Executor {
+                     break;
+             }
+ 
+-            // set Safe Area only for Android 15+
++            // set Safe Area only for Android 15+. Preserve the user-provided
++            // adOptions.margin so apps can position the banner above their
++            // own bottom UI (tab bars, custom controls, etc.).
+             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                 View rootView = activitySupplier.get().getWindow().getDecorView();
++                final int userMarginPx = (int) (adOptions.margin * density);
+                 rootView.setOnApplyWindowInsetsListener((v, insets) -> {
+                     int bottomInset = insets.getSystemWindowInsetBottom();
+                     int topInset = insets.getSystemWindowInsetTop();
+ 
+                     if ("TOP_CENTER".equals(adOptions.position)) {
+-                        mAdViewLayoutParams.setMargins(0, topInset, 0, 0);
++                        mAdViewLayoutParams.setMargins(0, topInset + userMarginPx, 0, 0);
+                     } else {
+-                        mAdViewLayoutParams.setMargins(0, 0, 0, bottomInset);
++                        mAdViewLayoutParams.setMargins(0, 0, 0, bottomInset + userMarginPx);
+                     }
+ 
+                     mAdViewLayout.setLayoutParams(mAdViewLayoutParams);

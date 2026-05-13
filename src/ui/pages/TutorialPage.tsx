@@ -208,15 +208,35 @@ function CaseDemo({ caseData, size }: { caseData: TutorialCase; size: CubeSize }
   const player = useAlgorithmPlayer(size, setup, algorithm);
 
   return (
-    <section className="grid gap-4 lg:grid-cols-2">
-      <div className="flex flex-col gap-3">
-        <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-3 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-950">
+    // Mobile (flex column, DOM order): Algorithm → Cube + Reset → Walk-through.
+    // Desktop (lg grid): cube spans both rows on the left, algorithm sits
+    // top-right, walk-through sits bottom-right.
+    <section className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4">
+      <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-3 dark:border-indigo-900 dark:bg-indigo-950/30 lg:order-2 lg:col-start-2 lg:row-start-1">
+        <div className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
+          {t('tutorial.algorithmLabel')}
+        </div>
+        <div className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-50">
+          {caseData.name}
+        </div>
+        <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">{caseData.description}</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {algorithm.map((m, i) => (
+            <MoveCard key={i} move={m} variant="small" />
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 lg:order-1 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:gap-3">
+        <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-0 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-950 sm:p-3">
           <CubeViewer3D
             facelets={player.cube.toFaceletString()}
             size={size}
             animation={player.animating}
             onAnimationEnd={player.finishAnimation}
-            className="aspect-square w-full"
+            // Cap on phones so the algorithm card + cube + walk-through fit
+            // in one viewport without scrolling.
+            className="mx-auto aspect-square w-full max-w-[34vh] sm:max-w-[42vh] lg:max-w-none"
           />
         </div>
         <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
@@ -233,21 +253,7 @@ function CaseDemo({ caseData, size }: { caseData: TutorialCase; size: CubeSize }
         </div>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-3 dark:border-indigo-900 dark:bg-indigo-950/30">
-          <div className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
-            {t('tutorial.algorithmLabel')}
-          </div>
-          <div className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-50">
-            {caseData.name}
-          </div>
-          <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">{caseData.description}</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {algorithm.map((m, i) => (
-              <MoveCard key={i} move={m} variant="small" />
-            ))}
-          </div>
-        </div>
+      <div className="lg:order-3 lg:col-start-2 lg:row-start-2">
         <StepViewer
           moves={algorithm}
           currentStep={player.step}

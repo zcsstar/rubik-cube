@@ -29,9 +29,11 @@ export function BottomTabBar() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 z-30 flex items-stretch border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
+      className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
+      // Tab bar pinned to the very bottom of the screen. The AdMob banner
+      // is positioned above us via its `margin` option, so the order stack
+      // from bottom up is: system gesture → tab bar → ad banner → content.
       style={{
-        bottom: 'var(--ad-banner-h)',
         height: 'calc(var(--tab-bar-h) + var(--safe-bottom))',
         paddingBottom: 'var(--safe-bottom)',
       }}

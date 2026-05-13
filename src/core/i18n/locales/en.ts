@@ -5,7 +5,7 @@ export const en: Messages = {
   'app.title': 'Cubist',
   'app.tagline': 'Solve any cube. Learn the patterns.',
   'app.lead':
-    'Drop in your cube state, get a clean step-by-step solution, and learn the beginner methods at your own pace. Free, in your browser, no sign-up.',
+    'Drop in your cube state, get a clean step-by-step solution, and learn the beginner methods at your own pace. Free, on any device, no sign-up.',
   'app.footer.line': "Cubist · Rubik's Cube Solver · Cheez @{year}",
   'app.footer.privacy': 'Privacy',
 

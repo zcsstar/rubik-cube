@@ -154,15 +154,46 @@ export async function maybeShowPostSolveAd(): Promise<void> {
   await showInterstitialIfReady();
 }
 
+/**
+ * Resolve the actual pixel value of `env(safe-area-inset-bottom)` via a
+ * hidden probe element. CSS `env()` doesn't expand inside getComputedStyle,
+ * so we measure it by rendering a 0-width box whose height is the inset.
+ */
+function measureSafeBottomPx(): number {
+  if (typeof document === 'undefined') return 0;
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position:fixed;left:0;bottom:0;width:0;visibility:hidden;height:env(safe-area-inset-bottom,0px)';
+  document.body.appendChild(probe);
+  const h = probe.getBoundingClientRect().height;
+  probe.remove();
+  return Math.round(h);
+}
+
+function tabBarHeightPx(): number {
+  if (typeof document === 'undefined') return 56;
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--tab-bar-h').trim();
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) ? n : 56;
+}
+
 export async function showBottomBanner(): Promise<void> {
   if (!isNative || bannerVisible) return;
   await ensureInitialized();
   const { banner } = getAdIds();
+  // Push the native banner up by tab-bar height + system inset so it sits
+  // ABOVE the in-app bottom tab bar. AdMob measures `margin` from the
+  // anchor position (bottom of the screen for BOTTOM_CENTER), in dp.
+  // Push the banner up by tab-bar height + system gesture inset so the
+  // tab bar can sit at the very bottom of the screen below the ad.
+  // Note: requires the patch in patches/ on Android 15+ — without it the
+  // plugin overrides our margin with just the system inset.
+  const marginPx = tabBarHeightPx() + measureSafeBottomPx();
   const options: BannerAdOptions = {
     adId: banner,
     adSize: BannerAdSize.ADAPTIVE_BANNER,
     position: BannerAdPosition.BOTTOM_CENTER,
-    margin: 0,
+    margin: marginPx,
   };
   try {
     await AdMob.showBanner(options);
