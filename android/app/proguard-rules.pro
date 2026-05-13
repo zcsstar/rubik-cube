@@ -1,21 +1,23 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Cubist release build rules (minifyEnabled + shrinkResources are on).
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep stack traces useful when debugging crash reports from the Play Console.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Capacitor bridges JavaScript <-> native via reflection on @PluginMethod and
+# @CapacitorPlugin annotated members. R8 must not strip them.
+-keep @com.getcapacitor.annotation.CapacitorPlugin public class * { *; }
+-keepclassmembers class * {
+    @com.getcapacitor.PluginMethod public *;
+    @com.getcapacitor.annotation.PermissionCallback public *;
+    @com.getcapacitor.annotation.ActivityCallback public *;
+}
+-keep public class * extends com.getcapacitor.Plugin { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Google Mobile Ads (AdMob) loads classes by reflection in its dynamite module.
+# Without these the SDK throws at runtime on minified builds.
+-keep class com.google.android.gms.ads.** { *; }
+-keep class com.google.android.gms.common.internal.safeparcel.** { *; }
+
+# androidx.webkit reflection used by Capacitor's WebView shim.
+-keep class androidx.webkit.** { *; }

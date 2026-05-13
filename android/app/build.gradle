@@ -1,5 +1,15 @@
 apply plugin: 'com.android.application'
 
+// Release signing config loaded from android/keystore.properties (gitignored).
+// The release build silently falls back to debug-signed if the file is missing,
+// so local debug builds keep working — but bundleRelease will fail loudly,
+// which is what we want for accidental publish attempts.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
 android {
     namespace = "com.cheez.cubist"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +17,10 @@ android {
         applicationId "com.cheez.cubist"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        // versionCode must increase on every Play upload. versionName is the
+        // human-readable label users see in the Play listing.
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +28,27 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystoreProps['STORE_FILE']) {
+                storeFile rootProject.file(keystoreProps['STORE_FILE'])
+                storePassword keystoreProps['STORE_PASSWORD']
+                keyAlias keystoreProps['KEY_ALIAS']
+                keyPassword keystoreProps['KEY_PASSWORD']
+            }
+        }
+    }
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // Only sign release if the keystore is present; otherwise leave
+            // unsigned so bundleRelease errors loudly instead of producing a
+            // debug-signed artifact that would be rejected by Play.
+            if (keystoreProps['STORE_FILE']) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }

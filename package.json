@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:prod-ads": "cross-env VITE_USE_PROD_ADS=1 npm run build",
+    "release:android": "npm run build:prod-ads && cap sync android && node scripts/gradle.mjs bundleRelease",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -48,6 +50,7 @@
     "@types/three": "^0.169.0",
     "@vite-pwa/assets-generator": "^1.0.2",
     "@vitejs/plugin-react": "^4.3.4",
+    "cross-env": "^10.1.0",
     "fast-check": "^3.23.1",
     "jsdom": "^25.0.1",
     "patch-package": "^8.0.1",
