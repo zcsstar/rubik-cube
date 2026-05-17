@@ -34,10 +34,83 @@ export class Solver2x2BFS implements ISolver {
   async solve(cube: ICube): Promise<Move[]> {
     if (cube.size !== 2) throw new Error('Solver2x2BFS called with non-2x2 cube');
     if (cube.isSolved()) return [];
-    const facelets3x3 = embed2x2In3x3(cube.toFaceletString());
+    // The 3x3 embedding fixes edges to solved (even permutation parity). The
+    // embedded 3x3 is therefore only solvable when the 2x2's corner permutation
+    // is also even — otherwise Kociemba searches the full IDA* depth (~22)
+    // without finding a solution, which on mobile feels like the solver
+    // hanging. Half of valid 2x2 states have odd corner parity. To get a
+    // solvable embedding either way, prepend a single face move (which flips
+    // parity by 3 transpositions = odd) when we'd otherwise embed an
+    // odd-parity state; the prepended move is added to the returned solution
+    // so it still solves the caller's cube end-to-end.
+    let workCube: ICube = cube;
+    let prefix: Move[] = [];
+    const parity = cornerParity2x2(cube.toFaceletString());
+    if (parity < 0) {
+      throw new Error('2x2 state is invalid: stickers do not form valid corners.');
+    }
+    if (parity === 1) {
+      const u: Move = { face: 'U', modifier: '', width: 1 };
+      workCube = workCube.apply(u);
+      prefix = [u];
+      if (workCube.isSolved()) return prefix;
+    }
+    const facelets3x3 = embed2x2In3x3(workCube.toFaceletString());
     const cube3x3 = Cube3x3.fromFacelets(facelets3x3);
-    return this.inner.solve(cube3x3);
+    const inner = await this.inner.solve(cube3x3);
+    return [...prefix, ...inner];
   }
+}
+
+/**
+ * The 8 corner positions of a 2x2 in URFDLB sticker-index layout. Order
+ * matches the canonical corner identity below (CANONICAL_CORNERS).
+ */
+const CORNER_POSITIONS_2X2: readonly (readonly [number, number, number])[] = [
+  [0, 16, 21],  // UBL
+  [1, 5, 20],   // UBR
+  [2, 8, 17],   // UFL
+  [3, 4, 9],    // UFR
+  [10, 12, 19], // DFL
+  [6, 11, 13],  // DFR
+  [14, 18, 23], // DBL
+  [7, 15, 22],  // DBR
+];
+
+/** Lookup table: sorted sticker colours of a corner → canonical corner index. */
+const CANONICAL_CORNERS: Readonly<Record<string, number>> = {
+  BLU: 0, BRU: 1, FLU: 2, FRU: 3, DFL: 4, DFR: 5, BDL: 6, BDR: 7,
+};
+
+/**
+ * Parity (0=even, 1=odd) of the 2x2's corner permutation. Returns -1 if the
+ * facelet string doesn't form 8 valid corners. We need parity to decide
+ * whether to prepend a face move before solving (see solve() above).
+ */
+export function cornerParity2x2(facelets: string): number {
+  const perm: number[] = [];
+  for (const [a, b, c] of CORNER_POSITIONS_2X2) {
+    const key = [facelets[a], facelets[b], facelets[c]].sort().join('');
+    const id = CANONICAL_CORNERS[key];
+    if (id === undefined) return -1;
+    perm.push(id);
+  }
+  // Verify it's a permutation (no duplicate corners).
+  if (new Set(perm).size !== 8) return -1;
+  let parity = 0;
+  const seen = new Array<boolean>(8).fill(false);
+  for (let i = 0; i < 8; i++) {
+    if (seen[i]) continue;
+    let len = 0;
+    let j = i;
+    while (!seen[j]) {
+      seen[j] = true;
+      j = perm[j]!;
+      len++;
+    }
+    if (len % 2 === 0) parity ^= 1; // even-length cycle = odd permutation
+  }
+  return parity;
 }
 
 /**

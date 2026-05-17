@@ -234,7 +234,9 @@ function SolveBody({ size }: { size: 2 | 3 }) {
               onSubmit={(faceletStr) => {
                 // The user may have painted the cube in any of 24 valid
                 // orientations (e.g. blue-on-top instead of white). Re-rotate
-                // to canonical URFDLB before handing it to the solver.
+                // to canonical before handing it to the solver. The 2x2 path
+                // doesn't need this — Solver2x2BFS handles arbitrary
+                // orientations and parity directly.
                 const canonical =
                   size === 3 ? (canonicalize3x3(faceletStr) ?? faceletStr) : faceletStr;
                 const cube =

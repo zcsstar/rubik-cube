@@ -39,6 +39,21 @@ describe('Solver2x2BFS', () => {
       expect(result.isSolved()).toBe(true);
     }
   }, 30_000);
+
+  it('solves odd-parity states without hanging (the camera-capture bug)', async () => {
+    // Repro of the user-reported bug: a 2x2 scrambled with a single face turn
+    // has odd corner permutation parity. The 3x3 embedding pins edges to
+    // even parity, so the embedded 3x3 is unsolvable and Kociemba would
+    // exhaust its full depth-22 search without returning — looking like a
+    // hang. Solver2x2BFS works around this by prepending a face move to
+    // re-balance parity before embedding; the prefix is included in the
+    // returned solution so it still solves the original cube end-to-end.
+    const oddParityScramble = Cube2x2.solved().apply({ face: 'U', modifier: '', width: 1 });
+    const solver = getSolver(2);
+    const solution = await solver.solve(oddParityScramble);
+    expect(solution.length).toBeGreaterThan(0);
+    expect(oddParityScramble.applyAll(solution).isSolved()).toBe(true);
+  }, 30_000);
 });
 
 describe('Solver3x3Kociemba', () => {
