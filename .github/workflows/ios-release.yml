@@ -31,7 +31,7 @@ on:
 jobs:
   release:
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -124,6 +124,18 @@ jobs:
             --team_id "$APPSTORE_TEAM_ID" \
             --api_key_path "$ASC_JSON" \
             --output_path /tmp/certs
+
+          # codesign on macOS CI runners hangs indefinitely if the keychain
+          # asks for permission to use the imported private key. Set the
+          # partition list so codesign + Apple tools can access it without
+          # an interactive prompt. The login keychain on GitHub-hosted
+          # macos-15 runners has an empty default password.
+          LOGIN_KC=~/Library/Keychains/login.keychain-db
+          security set-keychain-settings -lut 21600 "$LOGIN_KC"
+          security unlock-keychain -p "" "$LOGIN_KC"
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "" "$LOGIN_KC"
 
       - name: Create + install distribution provisioning profile
         env:
