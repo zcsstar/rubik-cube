@@ -89,20 +89,21 @@ jobs:
           chmod 600 "$KEY_PATH"
           echo "KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
-          # Also stage the API key as a YAML file for fastlane sigh, which
-          # uses it to create the distribution provisioning profile.
-          ASC_YAML=/tmp/asc_key.yaml
-          {
-            echo "key_id: $APPSTORE_KEY_ID"
-            echo "issuer_id: $APPSTORE_ISSUER_ID"
-            echo "key: |"
-            # YAML block scalar: every key line must be indented; awk adds two
-            # spaces in front of each PEM line.
-            printf '%s\n' "$APPSTORE_PRIVATE_KEY" | awk '{print "  " $0}'
-            echo "in_house: false"
-          } > "$ASC_YAML"
-          chmod 600 "$ASC_YAML"
-          echo "ASC_YAML=$ASC_YAML" >> "$GITHUB_ENV"
+          # Also stage the API key as JSON for fastlane sigh. We use Node
+          # rather than a shell heredoc so the multi-line PEM newlines get
+          # properly escaped to "\n" inside the JSON string.
+          ASC_JSON=/tmp/asc_key.json
+          node -e '
+            const fs = require("node:fs");
+            fs.writeFileSync(process.env.OUT, JSON.stringify({
+              key_id: process.env.K,
+              issuer_id: process.env.I,
+              key: process.env.P,
+              in_house: false,
+            }));
+          ' OUT="$ASC_JSON" K="$APPSTORE_KEY_ID" I="$APPSTORE_ISSUER_ID" P="$APPSTORE_PRIVATE_KEY"
+          chmod 600 "$ASC_JSON"
+          echo "ASC_JSON=$ASC_JSON" >> "$GITHUB_ENV"
 
       - name: Create + install distribution provisioning profile
         env:
@@ -113,17 +114,12 @@ jobs:
           # then installs it under ~/Library/MobileDevice/Provisioning
           # Profiles/ where xcodebuild will pick it up.
           mkdir -p /tmp/profiles
-          bundle exec fastlane sigh \
-            --app_identifier com.cheez.cubist \
-            --team_id "$APPSTORE_TEAM_ID" \
-            --api_key_path "$ASC_YAML" \
-            --output_path /tmp/profiles \
-            --filename Cubist_AppStore.mobileprovision \
-            --skip_install false || \
+          # `fastlane sigh` (Ruby) is preinstalled on macos-15 runners; no
+          # `bundle exec` needed (we have no Gemfile in the repo).
           fastlane sigh \
             --app_identifier com.cheez.cubist \
             --team_id "$APPSTORE_TEAM_ID" \
-            --api_key_path "$ASC_YAML" \
+            --api_key_path "$ASC_JSON" \
             --output_path /tmp/profiles \
             --filename Cubist_AppStore.mobileprovision \
             --skip_install false
