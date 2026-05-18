@@ -7,6 +7,7 @@ name: iOS Release (TestFlight)
 #   APPSTORE_KEY_ID       - 10-char Key ID from App Store Connect > Integrations
 #   APPSTORE_ISSUER_ID    - UUID Issuer ID from the same page
 #   APPSTORE_PRIVATE_KEY  - entire contents of the AuthKey_*.p8 file
+#   APPSTORE_TEAM_ID      - 10-char Team ID from developer.apple.com > Membership
 #
 # Apple-side prerequisites (one-time):
 #   - Bundle ID com.cheez.cubist registered in developer.apple.com Identifiers
@@ -93,7 +94,12 @@ jobs:
         env:
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_TEAM_ID: ${{ secrets.APPSTORE_TEAM_ID }}
         run: |
+          # The Capacitor template's pbxproj leaves DEVELOPMENT_TEAM empty so
+          # individual devs can drop in their own. We inject it from the
+          # APPSTORE_TEAM_ID secret as a command-line override -- no need to
+          # commit the team ID to the repo.
           xcodebuild \
             -project App.xcodeproj \
             -scheme App \
@@ -105,6 +111,8 @@ jobs:
             -authenticationKeyID "$APPSTORE_KEY_ID" \
             -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
             -skipPackagePluginValidation \
+            DEVELOPMENT_TEAM="$APPSTORE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
             archive
 
       - name: Export archive + upload to TestFlight
@@ -112,10 +120,12 @@ jobs:
         env:
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_TEAM_ID: ${{ secrets.APPSTORE_TEAM_ID }}
         run: |
           # destination=upload tells xcodebuild to upload to App Store Connect
-          # immediately after export, in a single step.
-          cat > ExportOptions.plist <<'EOF'
+          # immediately after export, in a single step. teamID disambiguates
+          # automatic signing when the API key issuer owns multiple teams.
+          cat > ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -126,6 +136,8 @@ jobs:
             <string>app-store-connect</string>
             <key>signingStyle</key>
             <string>automatic</string>
+            <key>teamID</key>
+            <string>$APPSTORE_TEAM_ID</string>
             <key>uploadSymbols</key>
             <true/>
           </dict>
