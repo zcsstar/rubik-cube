@@ -96,15 +96,13 @@ jobs:
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
           APPSTORE_TEAM_ID: ${{ secrets.APPSTORE_TEAM_ID }}
         run: |
-          # Build-setting overrides:
-          # - DEVELOPMENT_TEAM: Capacitor template leaves this empty so each
-          #   dev can drop in their own; inject from secret.
-          # - CODE_SIGN_IDENTITY=Apple Distribution: the template's Release
-          #   config inherits "iPhone Developer" (the legacy name for the
-          #   Development cert) which is wrong for App Store builds. App
-          #   Store needs the Distribution cert.
-          # - CODE_SIGN_STYLE=Automatic: belt-and-braces so
-          #   -allowProvisioningUpdates can actually do its job.
+          # With CODE_SIGN_STYLE=Automatic, the right identity (Development vs
+          # Distribution) is chosen by xcodebuild from the action context:
+          # `archive` on `generic/platform=iOS` means Distribution. We must
+          # NOT pass CODE_SIGN_IDENTITY here -- Automatic + manual identity
+          # is a hard conflict error from xcodebuild.
+          # DEVELOPMENT_TEAM is still required so Apple's auto-provisioning
+          # knows which team to allocate the cert + profile under.
           xcodebuild \
             -project App.xcodeproj \
             -scheme App \
@@ -118,8 +116,6 @@ jobs:
             -skipPackagePluginValidation \
             DEVELOPMENT_TEAM="$APPSTORE_TEAM_ID" \
             CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            "CODE_SIGN_IDENTITY[sdk=iphoneos*]=Apple Distribution" \
             archive
 
       - name: Export archive + upload to TestFlight
