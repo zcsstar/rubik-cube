@@ -108,6 +108,23 @@ jobs:
           chmod 600 "$ASC_JSON"
           echo "ASC_JSON=$ASC_JSON" >> "$GITHUB_ENV"
 
+      - name: Create + install distribution certificate
+        env:
+          APPSTORE_TEAM_ID: ${{ secrets.APPSTORE_TEAM_ID }}
+        run: |
+          # fastlane cert creates a new Apple Distribution certificate via
+          # the App Store Connect API and installs both the cert and its
+          # private key into the runner's keychain so sigh + xcodebuild can
+          # find a signing identity to attach to the profile.
+          # Note: Apple caps distribution certs at 3 per team. If we hit the
+          # limit we'll revoke an old one via the dev portal.
+          mkdir -p /tmp/certs
+          fastlane cert \
+            --development false \
+            --team_id "$APPSTORE_TEAM_ID" \
+            --api_key_path "$ASC_JSON" \
+            --output_path /tmp/certs
+
       - name: Create + install distribution provisioning profile
         env:
           APPSTORE_TEAM_ID: ${{ secrets.APPSTORE_TEAM_ID }}
