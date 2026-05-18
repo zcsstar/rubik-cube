@@ -59,5 +59,11 @@
 	</array>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>Cubist uses this identifier to show you more relevant ads. The app stays fully free either way — choosing "Ask App Not to Track" only switches ads to non-personalised.</string>
+	<!-- Required so navigator.mediaDevices.getUserMedia is exposed inside
+	     iOS WKWebView. Without this key WKWebView strips the API entirely
+	     and the in-app cube scanner falls back to "your browser does not
+	     support camera access". -->
+	<key>NSCameraUsageDescription</key>
+	<string>Cubist reads the colours of your Rubik's cube through the camera to build the solver's input. Frames stay on your device — nothing is uploaded.</string>
 </dict>
 </plist>
