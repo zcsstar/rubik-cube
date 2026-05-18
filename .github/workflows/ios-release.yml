@@ -78,16 +78,66 @@ jobs:
         env:
           APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
         run: |
           # xcodebuild looks for the .p8 either at a specified path or in one
           # of the known directories; we use the explicit-path mode for
-          # clarity. Set up both the file and an env-var that --upload-app
-          # consumers can use.
+          # clarity.
           mkdir -p ~/.appstoreconnect/private_keys
           KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8
           printf '%s' "$APPSTORE_PRIVATE_KEY" > "$KEY_PATH"
           chmod 600 "$KEY_PATH"
           echo "KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+          # Also stage the API key as a YAML file for fastlane sigh, which
+          # uses it to create the distribution provisioning profile.
+          ASC_YAML=/tmp/asc_key.yaml
+          {
+            echo "key_id: $APPSTORE_KEY_ID"
+            echo "issuer_id: $APPSTORE_ISSUER_ID"
+            echo "key: |"
+            # YAML block scalar: every key line must be indented; awk adds two
+            # spaces in front of each PEM line.
+            printf '%s\n' "$APPSTORE_PRIVATE_KEY" | awk '{print "  " $0}'
+            echo "in_house: false"
+          } > "$ASC_YAML"
+          chmod 600 "$ASC_YAML"
+          echo "ASC_YAML=$ASC_YAML" >> "$GITHUB_ENV"
+
+      - name: Create + install distribution provisioning profile
+        env:
+          APPSTORE_TEAM_ID: ${{ secrets.APPSTORE_TEAM_ID }}
+        run: |
+          # fastlane sigh creates (or downloads if it already exists) the
+          # App Store distribution provisioning profile for our bundle ID,
+          # then installs it under ~/Library/MobileDevice/Provisioning
+          # Profiles/ where xcodebuild will pick it up.
+          mkdir -p /tmp/profiles
+          bundle exec fastlane sigh \
+            --app_identifier com.cheez.cubist \
+            --team_id "$APPSTORE_TEAM_ID" \
+            --api_key_path "$ASC_YAML" \
+            --output_path /tmp/profiles \
+            --filename Cubist_AppStore.mobileprovision \
+            --skip_install false || \
+          fastlane sigh \
+            --app_identifier com.cheez.cubist \
+            --team_id "$APPSTORE_TEAM_ID" \
+            --api_key_path "$ASC_YAML" \
+            --output_path /tmp/profiles \
+            --filename Cubist_AppStore.mobileprovision \
+            --skip_install false
+
+          # Extract the profile name (an Apple-generated string like "iOS
+          # Team Store Provisioning Profile: com.cheez.cubist") so we can
+          # pass it to xcodebuild as PROVISIONING_PROFILE_SPECIFIER.
+          PROFILE_PATH=/tmp/profiles/Cubist_AppStore.mobileprovision
+          PROFILE_PLIST=$(security cms -D -i "$PROFILE_PATH")
+          PROFILE_NAME=$(echo "$PROFILE_PLIST" | /usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin)
+          PROFILE_UUID=$(echo "$PROFILE_PLIST" | /usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin)
+          echo "Profile: $PROFILE_NAME ($PROFILE_UUID)"
+          echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
+          echo "PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
 
       - name: Archive (Release configuration, generic iOS device)
         working-directory: ios/App
@@ -114,6 +164,7 @@ jobs:
             -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
             -skipPackagePluginValidation \
             DEVELOPMENT_TEAM="$APPSTORE_TEAM_ID" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
             archive
 
       - name: Export archive + upload to TestFlight
@@ -141,6 +192,11 @@ jobs:
             <string>manual</string>
             <key>teamID</key>
             <string>$APPSTORE_TEAM_ID</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.cheez.cubist</key>
+              <string>$PROFILE_NAME</string>
+            </dict>
             <key>uploadSymbols</key>
             <true/>
           </dict>
