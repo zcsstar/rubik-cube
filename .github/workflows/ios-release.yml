@@ -43,14 +43,26 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Select latest Xcode
-        # macos-26 may ship with multiple Xcode versions side by side; pick
-        # the highest installed so we always submit against the newest SDK.
+      - name: Select latest stable (non-beta) Xcode
+        # macos-26 ships with several Xcode versions side by side, sometimes
+        # including a beta seed (e.g. Xcode_26.5 build 17F5022i). App Store
+        # Connect rejects beta-built IPAs with error 90534. Pick the highest
+        # version whose name doesn't include "beta" / "rc".
         run: |
-          LATEST=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
-          if [ -n "$LATEST" ]; then
-            sudo xcode-select -s "$LATEST/Contents/Developer"
+          echo "Installed Xcode versions:"
+          ls -d /Applications/Xcode*.app 2>/dev/null
+          LATEST=$(
+            ls -d /Applications/Xcode_*.app 2>/dev/null \
+              | grep -viE 'beta|rc' \
+              | sort -V \
+              | tail -1
+          )
+          if [ -z "$LATEST" ]; then
+            echo "No stable Xcode found; falling back to first available"
+            LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | head -1)
           fi
+          echo "Selecting: $LATEST"
+          sudo xcode-select -s "$LATEST/Contents/Developer"
           xcodebuild -version
 
       - name: Install iOS platform support
