@@ -53,6 +53,16 @@ jobs:
           fi
           xcodebuild -version
 
+      - name: Install iOS platform support
+        # Xcode 26 ships with the iOS 26 SDK but the macos-26 runner image
+        # doesn't always have the iOS platform support files for storyboard
+        # compilation pre-installed (we saw "iOS 26.5 Platform Not Installed"
+        # at archive time without this step). Download them once before any
+        # iOS-targeted action.
+        run: |
+          xcodebuild -downloadPlatform iOS -quiet || \
+          xcodebuild -downloadPlatform iOS
+
       - name: Install dependencies
         run: npm ci
 
