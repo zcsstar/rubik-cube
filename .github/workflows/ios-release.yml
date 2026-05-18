@@ -44,25 +44,37 @@ jobs:
           cache: npm
 
       - name: Select latest stable (non-beta) Xcode
-        # macos-26 ships with several Xcode versions side by side, sometimes
-        # including a beta seed (e.g. Xcode_26.5 build 17F5022i). App Store
-        # Connect rejects beta-built IPAs with error 90534. Pick the highest
-        # version whose name doesn't include "beta" / "rc".
+        # macos-26 ships every Xcode 26.x including unreleased seeds. The
+        # directory name "Xcode_26.5.0.app" looks like a stable release but
+        # its binary build version 17F5022i ends in a lowercase letter,
+        # which is Apple's beta-seed marker -- App Store Connect rejects
+        # uploads from such builds with error 90534.
+        # Iterate highest-to-lowest, run `xcodebuild -version`, take the
+        # first Xcode whose build number ends in a digit (i.e. a release).
         run: |
           echo "Installed Xcode versions:"
           ls -d /Applications/Xcode*.app 2>/dev/null
-          LATEST=$(
-            ls -d /Applications/Xcode_*.app 2>/dev/null \
-              | grep -viE 'beta|rc' \
-              | sort -V \
-              | tail -1
-          )
-          if [ -z "$LATEST" ]; then
-            echo "No stable Xcode found; falling back to first available"
-            LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | head -1)
+          PICKED=
+          for app in $(ls -d /Applications/Xcode_*.app 2>/dev/null \
+                         | grep -viE 'beta|rc' \
+                         | sort -Vr); do
+            build=$(DEVELOPER_DIR="$app/Contents/Developer" \
+                    xcodebuild -version 2>/dev/null \
+                    | awk '/Build version/ {print $3}')
+            echo "  $app -> build $build"
+            if echo "$build" | grep -qE '[0-9]$'; then
+              PICKED="$app"
+              break
+            fi
+          done
+          if [ -z "$PICKED" ]; then
+            echo "No stable Xcode found; falling back to whatever sort -V picks"
+            PICKED=$(ls -d /Applications/Xcode_*.app 2>/dev/null \
+                      | grep -viE 'beta|rc' \
+                      | sort -V | tail -1)
           fi
-          echo "Selecting: $LATEST"
-          sudo xcode-select -s "$LATEST/Contents/Developer"
+          echo "Selecting: $PICKED"
+          sudo xcode-select -s "$PICKED/Contents/Developer"
           xcodebuild -version
 
       - name: Install iOS platform support
