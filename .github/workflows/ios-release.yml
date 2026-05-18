@@ -93,6 +93,9 @@ jobs:
           # rather than a shell heredoc so the multi-line PEM newlines get
           # properly escaped to "\n" inside the JSON string.
           ASC_JSON=/tmp/asc_key.json
+          # Env vars must come BEFORE the command, not after -- after the
+          # command they're positional args to node, not env exports.
+          OUT="$ASC_JSON" K="$APPSTORE_KEY_ID" I="$APPSTORE_ISSUER_ID" P="$APPSTORE_PRIVATE_KEY" \
           node -e '
             const fs = require("node:fs");
             fs.writeFileSync(process.env.OUT, JSON.stringify({
@@ -101,7 +104,7 @@ jobs:
               key: process.env.P,
               in_house: false,
             }));
-          ' OUT="$ASC_JSON" K="$APPSTORE_KEY_ID" I="$APPSTORE_ISSUER_ID" P="$APPSTORE_PRIVATE_KEY"
+          '
           chmod 600 "$ASC_JSON"
           echo "ASC_JSON=$ASC_JSON" >> "$GITHUB_ENV"
 
