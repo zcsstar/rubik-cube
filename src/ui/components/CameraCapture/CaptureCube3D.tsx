@@ -170,9 +170,13 @@ function Scene({ size, facelets, faceCaptured, activeFace }: SceneProps) {
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
-    // Slerp current rotation toward target. Rate tuned so 90° rotations land
-    // in ~500ms — fast enough to feel responsive, slow enough to read.
-    const rate = Math.min(1, delta * 6);
+    // Slow the slerp when the remaining rotation is large — gives the user
+    // time to follow opposite-face flips (e.g. U→D, ~180°), which are the
+    // visually hardest transitions to track. Smaller adjustments still snap
+    // fast so the cube doesn't feel laggy mid-step.
+    const angle = groupRef.current.quaternion.angleTo(targetQuat);
+    const baseRate = angle > Math.PI * 0.55 ? 2.2 : 6;
+    const rate = Math.min(1, delta * baseRate);
     groupRef.current.quaternion.slerp(targetQuat, rate);
   });
 

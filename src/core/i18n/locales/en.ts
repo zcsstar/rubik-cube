@@ -131,6 +131,7 @@ export const en: Messages = {
   'camera.orient.B': 'Rotate the cube so the BLUE face faces the camera. Keep WHITE at the top.',
   'camera.orient.L': 'Rotate the cube so the ORANGE face faces the camera. Keep WHITE at the top.',
   'camera.orient.D': 'Tilt the cube forward so the YELLOW bottom faces the camera. Keep GREEN at the top of the frame.',
+  'camera.preview.hint': 'Tap any sticker to fix its colour',
   'camera.btn.capture': 'Capture',
   'camera.btn.retake': 'Retake',
   'camera.btn.next': 'Next face',

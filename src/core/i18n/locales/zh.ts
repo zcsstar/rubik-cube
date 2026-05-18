@@ -130,6 +130,7 @@ export const zh: Messages = {
   'camera.orient.B': '转动魔方让蓝色面对相机。白色面保持在顶部。',
   'camera.orient.L': '转动魔方让橙色面对相机。白色面保持在顶部。',
   'camera.orient.D': '把魔方往前倾,让黄色底面对相机。绿色面留在画面顶部。',
+  'camera.preview.hint': '点按色块即可修正颜色',
   'camera.btn.capture': '拍摄',
   'camera.btn.retake': '重拍',
   'camera.btn.next': '下一面',
