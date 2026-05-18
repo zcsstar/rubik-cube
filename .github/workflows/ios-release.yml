@@ -30,7 +30,10 @@ on:
 
 jobs:
   release:
-    runs-on: macos-15
+    # macos-26 ships Xcode 26 + the iOS 26 SDK, which Apple now requires for
+    # all App Store submissions. macos-15 (Xcode 16.x) gets rejected at the
+    # upload validation step with "must be built with the iOS 26 SDK".
+    runs-on: macos-26
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +42,16 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      - name: Select latest Xcode
+        # macos-26 may ship with multiple Xcode versions side by side; pick
+        # the highest installed so we always submit against the newest SDK.
+        run: |
+          LATEST=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$LATEST" ]; then
+            sudo xcode-select -s "$LATEST/Contents/Developer"
+          fi
+          xcodebuild -version
 
       - name: Install dependencies
         run: npm ci
@@ -238,8 +251,14 @@ jobs:
               <key>com.cheez.cubist</key>
               <string>$PROFILE_NAME</string>
             </dict>
+            <!-- The GoogleMobileAds + UserMessagingPlatform xcframeworks
+                 ship without dSYMs; uploading symbols triggers a warning
+                 about missing UUIDs that can fail strict exports. We can
+                 still get App Store crash symbolication for our own code;
+                 the third-party SDK crashes will be partially symbolicated
+                 by Google's own dSYMs registered in AdMob console. -->
             <key>uploadSymbols</key>
-            <true/>
+            <false/>
           </dict>
           </plist>
           EOF
