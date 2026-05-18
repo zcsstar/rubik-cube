@@ -112,30 +112,43 @@ jobs:
         env:
           APPSTORE_TEAM_ID: ${{ secrets.APPSTORE_TEAM_ID }}
         run: |
+          # The runner's login keychain has a non-empty password we don't
+          # know, so we can't pre-authorise codesign access to keys that
+          # land in it. Spin up a temporary keychain with a password we
+          # generate, install fastlane cert's identity into THAT keychain,
+          # and make it the default for the rest of the build.
+          KEYCHAIN_PATH="$RUNNER_TEMP/cubist-signing.keychain-db"
+          KEYCHAIN_PASS="$(openssl rand -base64 24)"
+          security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          # Add the new keychain to the user search list AHEAD of the login
+          # keychain so codesign discovers our identity first.
+          security list-keychains -d user -s "$KEYCHAIN_PATH" \
+            $(security list-keychains -d user | tr -d '"')
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+          echo "KEYCHAIN_PASS=$KEYCHAIN_PASS" >> "$GITHUB_ENV"
+
           # fastlane cert creates a new Apple Distribution certificate via
-          # the App Store Connect API and installs both the cert and its
-          # private key into the runner's keychain so sigh + xcodebuild can
-          # find a signing identity to attach to the profile.
-          # Note: Apple caps distribution certs at 3 per team. If we hit the
-          # limit we'll revoke an old one via the dev portal.
+          # the App Store Connect API and imports both the cert and its
+          # private key into the keychain we just created.
+          # Note: Apple caps distribution certs at 3 per team. Revoke old
+          # ones via the dev portal if we hit the cap.
           mkdir -p /tmp/certs
           fastlane cert \
             --development false \
             --team_id "$APPSTORE_TEAM_ID" \
             --api_key_path "$ASC_JSON" \
-            --output_path /tmp/certs
+            --output_path /tmp/certs \
+            --keychain_path "$KEYCHAIN_PATH" \
+            --keychain_password "$KEYCHAIN_PASS"
 
-          # codesign on macOS CI runners hangs indefinitely if the keychain
-          # asks for permission to use the imported private key. Set the
-          # partition list so codesign + Apple tools can access it without
-          # an interactive prompt. The login keychain on GitHub-hosted
-          # macos-15 runners has an empty default password.
-          LOGIN_KC=~/Library/Keychains/login.keychain-db
-          security set-keychain-settings -lut 21600 "$LOGIN_KC"
-          security unlock-keychain -p "" "$LOGIN_KC"
+          # Pre-authorise codesign + Apple tools to use the imported private
+          # key without an interactive prompt -- this is the fix for the
+          # ~58-minute codesign hang we hit on the previous run.
           security set-key-partition-list \
             -S apple-tool:,apple:,codesign: \
-            -s -k "" "$LOGIN_KC"
+            -s -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
 
       - name: Create + install distribution provisioning profile
         env:
