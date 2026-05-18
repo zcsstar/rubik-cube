@@ -4,7 +4,19 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
 
-const isGhPages = !!process.env.GITHUB_ACTIONS;
+// GH Pages serves the app from the /rubik-cube/ sub-path so we need
+// absolute asset URLs with that prefix in the built index.html. For every
+// other build target -- Capacitor native, local dev, `npm run preview` --
+// we want relative asset URLs ("./assets/...") so the app loads from
+// whatever URL the WebView/server picks (capacitor://localhost,
+// http://localhost:5173, etc.).
+//
+// The GH Pages workflow exports DEPLOY_TARGET=gh-pages before running the
+// build; nothing else does. Don't rely on the generic GITHUB_ACTIONS env
+// var here because the iOS / Android release workflows ALSO run on
+// GitHub Actions runners, and they need relative paths to work in the
+// Capacitor WebView.
+const isGhPages = process.env.DEPLOY_TARGET === 'gh-pages';
 const base = isGhPages ? '/rubik-cube/' : './';
 // scope must be an absolute path; SW glob patterns assume absolute base.
 const scope = isGhPages ? '/rubik-cube/' : '/';

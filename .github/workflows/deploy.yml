@@ -24,7 +24,13 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # DEPLOY_TARGET=gh-pages tells vite.config.ts to emit /rubik-cube/
+      # absolute asset URLs so the app loads correctly from
+      # github.io/rubik-cube/. Without this the build uses relative paths
+      # suited for Capacitor / dev.
       - run: npm run build
+        env:
+          DEPLOY_TARGET: gh-pages
       - name: SPA fallback
         run: cp dist/index.html dist/404.html
       - uses: actions/configure-pages@v5
