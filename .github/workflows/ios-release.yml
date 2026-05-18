@@ -1,0 +1,149 @@
+name: iOS Release (TestFlight)
+
+# Build, sign, and upload an iOS release build to TestFlight. Triggered on
+# a `v*-ios` git tag push (e.g. `v1.0.0-ios`) or manually via the Actions tab.
+#
+# Required repository secrets (Settings -> Secrets -> Actions):
+#   APPSTORE_KEY_ID       - 10-char Key ID from App Store Connect > Integrations
+#   APPSTORE_ISSUER_ID    - UUID Issuer ID from the same page
+#   APPSTORE_PRIVATE_KEY  - entire contents of the AuthKey_*.p8 file
+#
+# Apple-side prerequisites (one-time):
+#   - Bundle ID com.cheez.cubist registered in developer.apple.com Identifiers
+#   - App entry created in App Store Connect with that bundle ID
+#   - API key has App Manager role or higher
+#
+# No signing certificates or provisioning profiles are stored in the repo --
+# xcodebuild's -allowProvisioningUpdates + API key auth makes Apple
+# auto-create both on first run and reuse them on every subsequent run.
+
+on:
+  push:
+    tags:
+      - 'v*-ios'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'MARKETING_VERSION (e.g. 1.0.0) — only needed when not triggered by a tag'
+        required: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web bundle with prod ad units
+        run: npm run build:prod-ads
+
+      - name: Sync iOS native assets
+        run: npx cap sync ios
+
+      - name: Derive version + build number
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v*-ios ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            VERSION="${VERSION%-ios}"
+          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="1.0.0"
+          fi
+          # Build number derived from the GHA run number so it monotonically
+          # increases without us hand-bumping. App Store requires that
+          # CFBundleVersion is unique + strictly increasing per upload.
+          BUILD="${{ github.run_number }}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "Releasing version=$VERSION build=$BUILD"
+
+      - name: Bump Xcode marketing + build version
+        working-directory: ios/App
+        run: |
+          xcrun agvtool new-marketing-version "${{ steps.version.outputs.version }}"
+          xcrun agvtool new-version -all "${{ steps.version.outputs.build }}"
+
+      - name: Stage App Store Connect API key
+        env:
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+        run: |
+          # xcodebuild looks for the .p8 either at a specified path or in one
+          # of the known directories; we use the explicit-path mode for
+          # clarity. Set up both the file and an env-var that --upload-app
+          # consumers can use.
+          mkdir -p ~/.appstoreconnect/private_keys
+          KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8
+          printf '%s' "$APPSTORE_PRIVATE_KEY" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Archive (Release configuration, generic iOS device)
+        working-directory: ios/App
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+        run: |
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/App.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$APPSTORE_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
+            -skipPackagePluginValidation \
+            archive
+
+      - name: Export archive + upload to TestFlight
+        working-directory: ios/App
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+        run: |
+          # destination=upload tells xcodebuild to upload to App Store Connect
+          # immediately after export, in a single step.
+          cat > ExportOptions.plist <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>destination</key>
+            <string>upload</string>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/App.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$APPSTORE_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID"
+
+      - name: Upload xcarchive on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cubist-ios-xcarchive-${{ steps.version.outputs.version }}-${{ steps.version.outputs.build }}
+          path: ios/App/build/App.xcarchive
+          if-no-files-found: warn
