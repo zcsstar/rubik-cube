@@ -99,13 +99,21 @@ jobs:
       - name: Derive version + build number
         id: version
         run: |
+          # Version resolution order:
+          #   1. v*-ios git tag      (e.g. v1.0.2-ios -> 1.0.2)
+          #   2. workflow_dispatch input
+          #   3. package.json "version" field
+          # Keeping package.json as the canonical marketing version means
+          # one edit per release bump propagates to iOS without touching
+          # the workflow. Android's versionName is still maintained
+          # separately in android/app/build.gradle by convention.
           if [[ "${GITHUB_REF}" == refs/tags/v*-ios ]]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
             VERSION="${VERSION%-ios}"
           elif [[ -n "${{ github.event.inputs.version }}" ]]; then
             VERSION="${{ github.event.inputs.version }}"
           else
-            VERSION="1.0.0"
+            VERSION=$(node -p "require('./package.json').version")
           fi
           # Build number derived from the GHA run number so it monotonically
           # increases without us hand-bumping. App Store requires that
