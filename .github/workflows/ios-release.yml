@@ -4,10 +4,16 @@ name: iOS Release (TestFlight)
 # a `v*-ios` git tag push (e.g. `v1.0.0-ios`) or manually via the Actions tab.
 #
 # Required repository secrets (Settings -> Secrets -> Actions):
-#   APPSTORE_KEY_ID       - 10-char Key ID from App Store Connect > Integrations
-#   APPSTORE_ISSUER_ID    - UUID Issuer ID from the same page
-#   APPSTORE_PRIVATE_KEY  - entire contents of the AuthKey_*.p8 file
-#   APPSTORE_TEAM_ID      - 10-char Team ID from developer.apple.com > Membership
+#   APPSTORE_KEY_ID                 - 10-char Key ID from App Store Connect > Integrations
+#   APPSTORE_ISSUER_ID              - UUID Issuer ID from the same page
+#   APPSTORE_PRIVATE_KEY            - entire contents of the AuthKey_*.p8 file
+#   APPSTORE_TEAM_ID                - 10-char Team ID from developer.apple.com > Membership
+#   MATCH_GIT_URL                   - https URL of the private repo storing
+#                                     fastlane match's encrypted cert + profile
+#   MATCH_GIT_BASIC_AUTHORIZATION   - base64("github_user:personal_access_token")
+#                                     with `repo` scope on the match repo
+#   MATCH_PASSWORD                  - the password fastlane match uses to encrypt
+#                                     cert + profile in the match repo
 #
 # Apple-side prerequisites (one-time):
 #   - Bundle ID com.cheez.cubist registered in developer.apple.com Identifiers
@@ -163,77 +169,61 @@ jobs:
           chmod 600 "$ASC_JSON"
           echo "ASC_JSON=$ASC_JSON" >> "$GITHUB_ENV"
 
-      - name: Create + install distribution certificate
+      - name: Set up signing via fastlane match
         env:
           APPSTORE_TEAM_ID: ${{ secrets.APPSTORE_TEAM_ID }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
         run: |
-          # The runner's login keychain has a non-empty password we don't
-          # know, so we can't pre-authorise codesign access to keys that
-          # land in it. Spin up a temporary keychain with a password we
-          # generate, install fastlane cert's identity into THAT keychain,
-          # and make it the default for the rest of the build.
+          # Dedicated temporary keychain with a known password so codesign
+          # can use the imported private key non-interactively. The runner's
+          # login keychain has an unknown password so we can't authorise
+          # against it.
           KEYCHAIN_PATH="$RUNNER_TEMP/cubist-signing.keychain-db"
           KEYCHAIN_PASS="$(openssl rand -base64 24)"
           security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
-          # Add the new keychain to the user search list AHEAD of the login
-          # keychain so codesign discovers our identity first.
+          # Put the new keychain ahead of the login keychain in the search
+          # list so codesign finds our identity first.
           security list-keychains -d user -s "$KEYCHAIN_PATH" \
             $(security list-keychains -d user | tr -d '"')
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
           echo "KEYCHAIN_PASS=$KEYCHAIN_PASS" >> "$GITHUB_ENV"
 
-          # fastlane cert creates a new Apple Distribution certificate via
-          # the App Store Connect API and imports both the cert and its
-          # private key into the keychain we just created.
-          # Note: Apple caps distribution certs at 3 per team. Revoke old
-          # ones via the dev portal if we hit the cap.
-          mkdir -p /tmp/certs
-          fastlane cert \
-            --development false \
-            --team_id "$APPSTORE_TEAM_ID" \
-            --api_key_path "$ASC_JSON" \
-            --output_path /tmp/certs \
-            --keychain_path "$KEYCHAIN_PATH" \
-            --keychain_password "$KEYCHAIN_PASS"
-
-          # Pre-authorise codesign + Apple tools to use the imported private
-          # key without an interactive prompt -- this is the fix for the
-          # ~58-minute codesign hang we hit on the previous run.
-          security set-key-partition-list \
-            -S apple-tool:,apple:,codesign: \
-            -s -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
-
-      - name: Create + install distribution provisioning profile
-        env:
-          APPSTORE_TEAM_ID: ${{ secrets.APPSTORE_TEAM_ID }}
-        run: |
-          # fastlane sigh creates (or downloads if it already exists) the
-          # App Store distribution provisioning profile for our bundle ID,
-          # then installs it under ~/Library/MobileDevice/Provisioning
-          # Profiles/ where xcodebuild will pick it up.
-          mkdir -p /tmp/profiles
-          # `fastlane sigh` (Ruby) is preinstalled on macos-15 runners; no
-          # `bundle exec` needed (we have no Gemfile in the repo).
-          fastlane sigh \
+          # fastlane match: stores the App Store Distribution certificate
+          # + provisioning profile, encrypted with MATCH_PASSWORD, in a
+          # private Git repo (MATCH_GIT_URL). First run creates them on
+          # Apple's side and stores them in the repo. Subsequent runs
+          # decrypt + install from the repo without burning Apple's
+          # 3-cert-per-team cap.
+          #
+          # --readonly=false lets the first run create. --shallow_clone
+          # speeds up the git clone significantly for repos with history.
+          fastlane match appstore \
             --app_identifier com.cheez.cubist \
             --team_id "$APPSTORE_TEAM_ID" \
             --api_key_path "$ASC_JSON" \
-            --output_path /tmp/profiles \
-            --filename Cubist_AppStore.mobileprovision \
-            --skip_install false
+            --git_url "$MATCH_GIT_URL" \
+            --git_basic_authorization "$MATCH_GIT_BASIC_AUTHORIZATION" \
+            --keychain_name "$KEYCHAIN_PATH" \
+            --keychain_password "$KEYCHAIN_PASS" \
+            --readonly false \
+            --shallow_clone true
 
-          # Extract the profile name (an Apple-generated string like "iOS
-          # Team Store Provisioning Profile: com.cheez.cubist") so we can
-          # pass it to xcodebuild as PROVISIONING_PROFILE_SPECIFIER.
-          PROFILE_PATH=/tmp/profiles/Cubist_AppStore.mobileprovision
-          PROFILE_PLIST=$(security cms -D -i "$PROFILE_PATH")
-          PROFILE_NAME=$(echo "$PROFILE_PLIST" | /usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin)
-          PROFILE_UUID=$(echo "$PROFILE_PLIST" | /usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin)
-          echo "Profile: $PROFILE_NAME ($PROFILE_UUID)"
+          # fastlane match's installed profile is named "match AppStore
+          # <bundle_id>" by convention. Export for the archive + export
+          # steps to reference.
+          PROFILE_NAME="match AppStore com.cheez.cubist"
           echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
-          echo "PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
+
+          # Pre-authorise codesign access to the private key in our
+          # custom keychain (match doesn't do this for us when it imports
+          # into a custom keychain).
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
 
       - name: Archive (Release configuration, generic iOS device)
         working-directory: ios/App
