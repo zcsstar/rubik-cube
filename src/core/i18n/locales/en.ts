@@ -141,6 +141,29 @@ export const en: Messages = {
   'camera.facing.user': 'Switch to back camera',
   'camera.faceCount': 'Step {n} of 6',
 
+  // Free-order camera flow (3×3 only)
+  'camera.free.title': 'Capture your cube',
+  'camera.free.progress': '{n} of 6 faces',
+  'camera.free.hint': 'Point the camera at any face and tap Capture. Order does not matter.',
+  'camera.free.allDone': 'All 6 faces captured — tap Done to continue.',
+  'camera.free.detected': 'Looks like the {color} face',
+  'camera.free.wrongFace': 'Wrong face?',
+  'camera.free.useFace': 'Use this face',
+  'camera.free.reassignPrompt': 'Which face is this really?',
+  'camera.free.resolving': 'Piecing together your cube…',
+  'camera.free.errorInvalid':
+    'Some stickers look misread. Tap any face below to retake it, or edit stickers manually.',
+  'camera.free.errorAmbiguous':
+    'Could not lock in a single orientation. Retake a face for a clearer angle.',
+  'camera.free.errorAction': 'Tap a captured face to retake it, or:',
+  'camera.free.editManually': 'Edit stickers manually',
+  'camera.face.U.short': 'white',
+  'camera.face.R.short': 'red',
+  'camera.face.F.short': 'green',
+  'camera.face.D.short': 'yellow',
+  'camera.face.L.short': 'orange',
+  'camera.face.B.short': 'blue',
+
   // Tutorial
   'tutorial.step': 'Step',
   'tutorial.casesInStep': 'Cases in this step',
