@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import CubeJS from 'cubejs';
 import type { FaceLetter } from '../cube/colors';
-import { resolveOrientation3x3 } from './resolveOrientation';
+import { Cube2x2 } from '../cube/Cube2x2';
+import { resolveOrientation2x2, resolveOrientation3x3 } from './resolveOrientation';
 
 const SOLVED =
   'UUUUUUUUU' + 'RRRRRRRRR' + 'FFFFFFFFF' + 'DDDDDDDDD' + 'LLLLLLLLL' + 'BBBBBBBBB';
@@ -114,5 +115,121 @@ describe('resolveOrientation3x3', () => {
         }
       }
     }
+  });
+});
+
+const SOLVED_2X2 = 'UUUU' + 'RRRR' + 'FFFF' + 'DDDD' + 'LLLL' + 'BBBB';
+
+function split2x2(facelets: string): FaceLetter[][] {
+  const faces: FaceLetter[][] = [];
+  for (let i = 0; i < 6; i++) {
+    faces.push(facelets.slice(i * 4, i * 4 + 4).split('') as FaceLetter[]);
+  }
+  return faces;
+}
+
+/** Rotate a 2x2 face 90° CW k times: [TL,TR,BL,BR] → [BL,TL,BR,TR]. */
+function rotate2x2(face: readonly FaceLetter[], k: number): FaceLetter[] {
+  let out = [...face];
+  for (let i = 0; i < k; i++) {
+    out = [out[2]!, out[0]!, out[3]!, out[1]!];
+  }
+  return out;
+}
+
+/** Shuffle an array deterministically using a seeded LCG. */
+function shuffle<T>(arr: T[], seed: number): T[] {
+  const out = [...arr];
+  let s = seed;
+  for (let i = out.length - 1; i > 0; i--) {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    const j = s % (i + 1);
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
+
+describe('resolveOrientation2x2', () => {
+  it('returns a valid facelet string for a solved cube', () => {
+    const result = resolveOrientation2x2({ faces: split2x2(SOLVED_2X2) });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // Any of 24 rotation-equivalents is acceptable. Verify via the 2x2
+      // solver: SOLVED stays solved under all 24 whole-cube rotations.
+      const cube = Cube2x2.fromFacelets(result.facelets);
+      expect(cube.isSolved()).toBe(true);
+    }
+  });
+
+  it('recovers a scrambled cube under shuffled face order + per-face rotation', () => {
+    const scrambled = Cube2x2.solved().applyAll([
+      { face: 'R', modifier: '', width: 1 },
+      { face: 'U', modifier: '', width: 1 },
+      { face: 'F', modifier: "'", width: 1 },
+      { face: 'R', modifier: "'", width: 1 },
+    ]);
+    const target = scrambled.toFaceletString();
+    const faces = split2x2(target);
+    // Shuffle the 6 faces and apply arbitrary rotations to simulate
+    // free-order / free-rotation capture.
+    const rotKs = [1, 3, 2, 0, 2, 1];
+    const rotated = faces.map((f, i) => rotate2x2(f, rotKs[i]!));
+    const shuffled = shuffle(
+      rotated.map((stickers, idx) => ({ stickers, idx })),
+      42,
+    ).map((x) => x.stickers);
+    const result = resolveOrientation2x2({ faces: shuffled });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // Resolver returns SOME orientation of the same physical cube — its
+      // canonical solution length must match the target's.
+      // We can't string-compare since 2x2 has no anchor; instead verify the
+      // colour-count + reachability via the solver downstream by checking
+      // round-trip equivalence: both must have the same set of corner
+      // colour-triples.
+      expect(result.facelets.length).toBe(24);
+      const cornerTriples = (s: string): string[] => {
+        // 8 corners using the same layout as the resolver.
+        const C: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
+          [[0, 3], [1, 0], [2, 1]],
+          [[0, 2], [2, 0], [4, 1]],
+          [[0, 0], [4, 0], [5, 1]],
+          [[0, 1], [5, 0], [1, 1]],
+          [[3, 1], [2, 3], [1, 2]],
+          [[3, 0], [4, 3], [2, 2]],
+          [[3, 2], [5, 3], [4, 2]],
+          [[3, 3], [1, 3], [5, 2]],
+        ];
+        return C.map((c) => c.map(([f, p]) => s[f * 4 + p]!).sort().join(''));
+      };
+      const a = cornerTriples(result.facelets).sort();
+      const b = cornerTriples(target).sort();
+      expect(a).toEqual(b);
+    }
+  });
+
+  it('rejects a capture where colour counts are wrong', () => {
+    const faces = split2x2(SOLVED_2X2);
+    // Replace one R sticker with U — now U has 5 and R has 3 across the cube.
+    faces[1]![0] = 'U';
+    const result = resolveOrientation2x2({ faces });
+    expect(result.ok).toBe(false);
+  });
+
+  it('rejects a capture that breaks the corner-orientation parity', () => {
+    // A single corner twist (mathematically unreachable) keeps colour counts
+    // correct but corner-orientation sum becomes 1, not 0 mod 3.
+    const faces = split2x2(SOLVED_2X2);
+    // Twist the URF corner: U[3], R[0], F[1] should rotate U→R→F→U. Pick
+    // values that swap which colour sits in which slot without affecting
+    // overall counts elsewhere. Easiest: swap U[3] with R[0] and rotate the
+    // third sticker.
+    // The simplest unreachable twist is one corner rotated CW: stickers
+    // were U R F; become R F U at the same positions.
+    faces[0]![3] = 'R';
+    faces[1]![0] = 'F';
+    faces[2]![1] = 'U';
+    const result = resolveOrientation2x2({ faces });
+    expect(result.ok).toBe(false);
   });
 });

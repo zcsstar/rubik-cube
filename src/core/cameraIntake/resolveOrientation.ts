@@ -256,3 +256,144 @@ export function resolveOrientation3x3(input: ResolveInput): ResolveResult {
   const [only] = found;
   return { ok: true, facelets: only! };
 }
+
+// ---------- 2x2 ----------
+
+/**
+ * 2x2 corner sticker positions (using the Cube2x2 layout — see Cube2x2.ts).
+ * Each face is 4 stickers row-major: indices 0=TL, 1=TR, 2=BL, 3=BR. The
+ * U/D-coloured sticker is listed first in each triple so corner orientation
+ * (index of U/D within the triple) is well-defined for the parity check.
+ */
+const CORNERS_2X2: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
+  [[U, 3], [R, 0], [F, 1]], // URF
+  [[U, 2], [F, 0], [L, 1]], // UFL
+  [[U, 0], [L, 0], [B, 1]], // UBL
+  [[U, 1], [B, 0], [R, 1]], // UBR
+  [[D, 1], [F, 3], [R, 2]], // DFR
+  [[D, 0], [L, 3], [F, 2]], // DFL
+  [[D, 2], [B, 3], [L, 2]], // DBL
+  [[D, 3], [R, 3], [B, 2]], // DBR
+];
+
+/** 90° clockwise rotation of a 2x2 face: [TL,TR,BL,BR] → [BL,TL,BR,TR]. */
+function rotate90CW2x2(face: readonly FaceLetter[]): FaceLetter[] {
+  return [face[2]!, face[0]!, face[3]!, face[1]!];
+}
+
+function allRotations2x2(face: readonly FaceLetter[]): FaceLetter[][] {
+  const r0 = [...face];
+  const r1 = rotate90CW2x2(r0);
+  const r2 = rotate90CW2x2(r1);
+  const r3 = rotate90CW2x2(r2);
+  return [r0, r1, r2, r3];
+}
+
+function buildFacelets2x2(faces: ReadonlyArray<readonly FaceLetter[]>): string {
+  let out = '';
+  for (let i = 0; i < 6; i++) out += faces[i]!.join('');
+  return out;
+}
+
+/**
+ * 2x2 reachability check: 8 corners must each be a canonical colour-triple,
+ * all distinct, and the corner-orientation sum must be ≡ 0 mod 3. There's no
+ * edge or permutation-parity constraint on a 2x2 (the corner-only group has
+ * no parity link), so this is the full set of physical-reachability
+ * constraints.
+ */
+function isReachableState2x2(facelets: string): boolean {
+  const seen = new Set<string>();
+  let orientationSum = 0;
+  for (const corner of CORNERS_2X2) {
+    const stickers = corner.map(([f, p]) => facelets[f * 4 + p]!);
+    const key = sortJoin(stickers);
+    if (!CORNER_KEYS.has(key)) return false;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    let ori = -1;
+    for (let i = 0; i < 3; i++) {
+      if (stickers[i] === 'U' || stickers[i] === 'D') {
+        ori = i;
+        break;
+      }
+    }
+    if (ori === -1) return false;
+    orientationSum += ori;
+  }
+  return orientationSum % 3 === 0;
+}
+
+function* permutationsOf<T>(arr: readonly T[]): Generator<T[]> {
+  if (arr.length <= 1) {
+    yield [...arr];
+    return;
+  }
+  for (let i = 0; i < arr.length; i++) {
+    const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
+    for (const p of permutationsOf(rest)) yield [arr[i]!, ...p];
+  }
+}
+
+export interface ResolveInput2x2 {
+  /** 6 captured faces, each 4 stickers row-major, in arbitrary capture order
+   *  (a 2x2 has no centres so the caller has no way to pre-assign slots). */
+  readonly faces: ReadonlyArray<readonly FaceLetter[]>;
+}
+
+/**
+ * Resolve a 2x2 capture into a canonical 24-char facelet string. Unlike 3x3,
+ * the resolver also has to figure out which captured face goes in which slot
+ * (no centre → no anchor). Search space is 6! × 4⁶ ≈ 2.95M; early-exits on
+ * the first reachable candidate. A 2x2 has 24 rotation-equivalent
+ * representations of the same physical cube — the solver handles any of
+ * them, so returning the first hit is fine.
+ *
+ * Pre-checks the colour count (each face letter must appear exactly 4 times)
+ * before the brute force, so misclassified captures fail in microseconds
+ * instead of seconds.
+ */
+export function resolveOrientation2x2(input: ResolveInput2x2): ResolveResult {
+  if (input.faces.length !== 6) return { ok: false, reason: 'no_valid_orientation' };
+  for (let i = 0; i < 6; i++) {
+    if (input.faces[i]!.length !== 4) return { ok: false, reason: 'no_valid_orientation' };
+  }
+  const counts: Record<string, number> = {};
+  for (const face of input.faces) {
+    for (const s of face) counts[s] = (counts[s] ?? 0) + 1;
+  }
+  for (const f of URFDLB) {
+    if (counts[f] !== 4) return { ok: false, reason: 'no_valid_orientation' };
+  }
+
+  const allRots = input.faces.map(allRotations2x2);
+  const indices = [0, 1, 2, 3, 4, 5];
+
+  for (const perm of permutationsOf(indices)) {
+    for (let r0 = 0; r0 < 4; r0++) {
+      for (let r1 = 0; r1 < 4; r1++) {
+        for (let r2 = 0; r2 < 4; r2++) {
+          for (let r3 = 0; r3 < 4; r3++) {
+            for (let r4 = 0; r4 < 4; r4++) {
+              for (let r5 = 0; r5 < 4; r5++) {
+                const arrangement = [
+                  allRots[perm[0]!]![r0]!,
+                  allRots[perm[1]!]![r1]!,
+                  allRots[perm[2]!]![r2]!,
+                  allRots[perm[3]!]![r3]!,
+                  allRots[perm[4]!]![r4]!,
+                  allRots[perm[5]!]![r5]!,
+                ];
+                const candidate = buildFacelets2x2(arrangement);
+                if (isReachableState2x2(candidate)) {
+                  return { ok: true, facelets: candidate };
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return { ok: false, reason: 'no_valid_orientation' };
+}

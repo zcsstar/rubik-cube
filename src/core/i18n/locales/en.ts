@@ -147,6 +147,7 @@ export const en: Messages = {
   'camera.free.hint': 'Point the camera at any face and tap Capture. Order does not matter.',
   'camera.free.allDone': 'All 6 faces captured — tap Done to continue.',
   'camera.free.centerLabel': 'Center is',
+  'camera.free.faceN': 'Face {n} of 6',
   'camera.free.wrongFace': 'Wrong face?',
   'camera.free.useFace': 'Use this face',
   'camera.free.reassignPrompt': 'Which face is this really?',
