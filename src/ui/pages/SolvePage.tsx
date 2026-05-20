@@ -34,7 +34,12 @@ export function SolvePage({ size }: SolvePageProps) {
     );
   }
 
-  return <SolveBody size={size} />;
+  // Key on `size` so the body (and its useSolveSession state) is remounted
+  // when the user switches between 2×2 and 3×3. Without this, React reconciles
+  // the two route elements as the same component instance, and useState's
+  // initializer (which seeds the initial cube based on `size`) never re-runs —
+  // a 2×2 state ends up displayed on the 3×3 page and vice versa.
+  return <SolveBody key={size} size={size} />;
 }
 
 function SolveBody({ size }: { size: 2 | 3 }) {
