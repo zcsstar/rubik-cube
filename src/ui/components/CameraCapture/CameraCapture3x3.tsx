@@ -483,11 +483,16 @@ function PreviewLayer({ previewFace, stickers, onCellTap }: PreviewLayerProps) {
   const { t } = useI18n();
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/40 px-4">
-      <p
-        className="rounded-md bg-slate-950/80 px-3 py-1.5 text-sm font-semibold shadow"
-        style={{ color: FACE_COLORS[previewFace] === '#FFFFFF' ? '#fff' : FACE_COLORS[previewFace] }}
-      >
-        {t('camera.free.detected', { color: t(`camera.face.${previewFace}.short`) })}
+      <p className="flex items-center gap-2 rounded-md bg-slate-950/80 px-3 py-1.5 text-sm font-semibold text-white shadow">
+        <span
+          aria-hidden="true"
+          className="inline-block h-3.5 w-3.5 rounded-sm ring-1 ring-white/60"
+          style={{ backgroundColor: FACE_COLORS[previewFace] }}
+        />
+        <span>{t('camera.free.centerLabel')}</span>
+        <span style={{ color: FACE_COLORS[previewFace] }}>
+          {t(`camera.face.${previewFace}.short`)}
+        </span>
       </p>
       <div
         className="grid gap-1.5 rounded-lg bg-slate-950/40 p-1.5 shadow-2xl ring-1 ring-white/15"

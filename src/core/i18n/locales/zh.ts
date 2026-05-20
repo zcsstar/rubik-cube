@@ -145,7 +145,7 @@ export const zh: Messages = {
   'camera.free.progress': '已拍 {n} / 6 面',
   'camera.free.hint': '把任意一面对准相机,点击拍摄。顺序随意。',
   'camera.free.allDone': '六面已拍完 —— 点击完成继续。',
-  'camera.free.detected': '看起来是{color}面',
+  'camera.free.centerLabel': '中心是',
   'camera.free.wrongFace': '拍错面?',
   'camera.free.useFace': '使用这一面',
   'camera.free.reassignPrompt': '这其实是哪一面?',
