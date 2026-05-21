@@ -4,6 +4,7 @@ import { URFDLB } from '@core/cube/ICube';
 import type { FaceLetter } from '@core/cube/colors';
 import { FACE_COLORS } from '@core/cube/colors';
 import { classifyColor, samplePatch } from '@core/colorRecognition/classifier';
+import { refineWithKMeans, type Sample } from '@core/colorRecognition/refine';
 import {
   resolveOrientation2x2,
   resolveOrientation3x3,
@@ -49,6 +50,13 @@ interface FaceCapture {
   /** Stickers row-major in whatever rotation the camera saw. Length =
    *  size×size. For 3×3 the centre (index 4) drives face identity. */
   stickers: FaceLetter[];
+  /** Averaged per-sticker RGB samples (post multi-frame averaging), aligned
+   *  with `stickers`. Kept so the final K-means refinement pass can re-label
+   *  borderline patches against this cube's own observed centroids. */
+  rgbs: { r: number; g: number; b: number }[];
+  /** Patch indices the user manually corrected (tap-to-fix or reassignTo).
+   *  K-means skips these so user input always wins. */
+  overrides: Set<number>;
 }
 
 type Stage = 'init' | 'live' | 'preview' | 'resolving' | 'error' | 'denied' | 'unsupported';
@@ -132,51 +140,65 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
   /**
    * Multi-sample the live video into a size×size sticker face. Averaging
    * over a few frames knocks down per-frame camera noise so the centre
-   * classification (for 3×3 face identity) is reliable.
+   * classification (for 3×3 face identity) is reliable. Returns both the
+   * per-sticker classification (used immediately for face-slot routing on
+   * 3×3) and the averaged RGB (kept so the resolve-time K-means pass can
+   * re-label patches against this cube's own observed colour centroids).
    */
-  const sampleFace = useCallback(async (): Promise<FaceLetter[] | null> => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return null;
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
-    if (!vw || !vh) return null;
-    const side = Math.min(vw, vh);
-    const sx = (vw - side) / 2;
-    const sy = (vh - side) / 2;
-    canvas.width = side;
-    canvas.height = side;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return null;
-    const radius = Math.max(8, side / size / 8);
-    const accum = new Array(stickersPerFace).fill(null).map(() => ({ r: 0, g: 0, b: 0 }));
-    for (let frame = 0; frame < MULTI_SAMPLE_FRAMES; frame++) {
-      ctx.drawImage(video, sx, sy, side, side, 0, 0, side, side);
-      const img = ctx.getImageData(0, 0, side, side);
-      let idx = 0;
-      for (let row = 0; row < size; row++) {
-        for (let col = 0; col < size; col++) {
-          const cx = ((col + 0.5) / size) * side;
-          const cy = ((row + 0.5) / size) * side;
-          const { r, g, b } = samplePatch(img.data, side, cx, cy, radius);
-          accum[idx]!.r += r;
-          accum[idx]!.g += g;
-          accum[idx]!.b += b;
-          idx++;
+  const sampleFace = useCallback(
+    async (): Promise<{
+      stickers: FaceLetter[];
+      rgbs: { r: number; g: number; b: number }[];
+    } | null> => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || !canvas) return null;
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh) return null;
+      const side = Math.min(vw, vh);
+      const sx = (vw - side) / 2;
+      const sy = (vh - side) / 2;
+      canvas.width = side;
+      canvas.height = side;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return null;
+      const radius = Math.max(8, side / size / 8);
+      const accum = new Array(stickersPerFace).fill(null).map(() => ({ r: 0, g: 0, b: 0 }));
+      for (let frame = 0; frame < MULTI_SAMPLE_FRAMES; frame++) {
+        ctx.drawImage(video, sx, sy, side, side, 0, 0, side, side);
+        const img = ctx.getImageData(0, 0, side, side);
+        let idx = 0;
+        for (let row = 0; row < size; row++) {
+          for (let col = 0; col < size; col++) {
+            const cx = ((col + 0.5) / size) * side;
+            const cy = ((row + 0.5) / size) * side;
+            const { r, g, b } = samplePatch(img.data, side, cx, cy, radius);
+            accum[idx]!.r += r;
+            accum[idx]!.g += g;
+            accum[idx]!.b += b;
+            idx++;
+          }
+        }
+        if (frame < MULTI_SAMPLE_FRAMES - 1) {
+          await new Promise<void>((resolve) => setTimeout(resolve, MULTI_SAMPLE_DELAY_MS));
         }
       }
-      if (frame < MULTI_SAMPLE_FRAMES - 1) {
-        await new Promise<void>((resolve) => setTimeout(resolve, MULTI_SAMPLE_DELAY_MS));
-      }
-    }
-    return accum.map((a) =>
-      classifyColor(a.r / MULTI_SAMPLE_FRAMES, a.g / MULTI_SAMPLE_FRAMES, a.b / MULTI_SAMPLE_FRAMES),
-    );
-  }, [size, stickersPerFace]);
+      const rgbs = accum.map((a) => ({
+        r: a.r / MULTI_SAMPLE_FRAMES,
+        g: a.g / MULTI_SAMPLE_FRAMES,
+        b: a.b / MULTI_SAMPLE_FRAMES,
+      }));
+      const stickers = rgbs.map((c) => classifyColor(c.r, c.g, c.b));
+      return { stickers, rgbs };
+    },
+    [size, stickersPerFace],
+  );
 
   const capture = useCallback(async () => {
-    const stickers = await sampleFace();
-    if (!stickers) return;
+    const sampled = await sampleFace();
+    if (!sampled) return;
+    const { stickers, rgbs } = sampled;
     let targetIndex: number;
     if (isCenterIdentified) {
       // 3×3: centre sticker is the face's identity, so slot it by URFDLB index.
@@ -190,7 +212,7 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
     }
     setCaptures((prev) => {
       const out = [...prev];
-      out[targetIndex] = { stickers };
+      out[targetIndex] = { stickers, rgbs, overrides: new Set<number>() };
       return out;
     });
     setPreviewIndex(targetIndex);
@@ -211,9 +233,13 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
         // Force the centre to the new face letter so the resolver
         // (which trusts the centre) lines up.
         newStickers[centerIndex] = URFDLB[targetSlot]!;
+        // The user just told us what face this is, so pin the centre as an
+        // override — K-means must not re-label it.
+        const newOverrides = new Set(cap.overrides);
+        newOverrides.add(centerIndex);
         const next = [...prev];
         next[previewIndex] = null;
-        next[targetSlot] = { stickers: newStickers };
+        next[targetSlot] = { stickers: newStickers, rgbs: cap.rgbs, overrides: newOverrides };
         return next;
       });
       setPreviewIndex(targetSlot);
@@ -235,8 +261,12 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
         const next = [...cap.stickers];
         const cur = CYCLE_ORDER.indexOf(next[patchIndex]!);
         next[patchIndex] = CYCLE_ORDER[(cur + 1) % CYCLE_ORDER.length]!;
+        // User just hand-corrected this sticker — pin it so the K-means pass
+        // can't undo their choice.
+        const newOverrides = new Set(cap.overrides);
+        newOverrides.add(patchIndex);
         const out = [...prev];
-        out[previewIndex] = { stickers: next };
+        out[previewIndex] = { stickers: next, rgbs: cap.rgbs, overrides: newOverrides };
         return out;
       });
     },
@@ -268,7 +298,29 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
     // Defer to a microtask so the spinner has a chance to paint before the
     // (synchronous, ~50ms–3s) resolver runs.
     setTimeout(() => {
-      const faces = captures.map((c) => c!.stickers);
+      // Final pass: K-means refinement across all six faces' raw RGB before
+      // we hand the labels to the resolver. The per-pixel HSV classifier ran
+      // independently on each capture and can drift across faces under
+      // varying light (red↔orange, white↔yellow). K-means clusters all the
+      // patches against six common centroids so borderline stickers get
+      // pulled back to the cluster the rest of the cube agrees on. Patches
+      // the user manually corrected (or centres locked via reassignTo) are
+      // skipped so human input always wins.
+      const samples: Sample[] = [];
+      for (let f = 0; f < 6; f++) {
+        const cap = captures[f];
+        if (!cap) continue;
+        for (let p = 0; p < cap.rgbs.length; p++) {
+          if (cap.overrides.has(p)) continue;
+          samples.push({ faceIndex: f, patchIndex: p, rgb: cap.rgbs[p]! });
+        }
+      }
+      const refined = samples.length > 0 ? refineWithKMeans(samples) : null;
+      const faces = captures.map((cap, f) =>
+        cap!.stickers.map((orig, p) =>
+          cap!.overrides.has(p) ? orig : (refined?.get(`${f},${p}`) ?? orig),
+        ),
+      );
       const result: ResolveResult =
         size === 3 ? resolveOrientation3x3({ faces }) : resolveOrientation2x2({ faces });
       if (result.ok) {
