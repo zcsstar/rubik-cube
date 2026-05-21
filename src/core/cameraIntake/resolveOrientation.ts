@@ -336,22 +336,78 @@ function* permutationsOf<T>(arr: readonly T[]): Generator<T[]> {
 }
 
 export interface ResolveInput2x2 {
-  /** 6 captured faces, each 4 stickers row-major, in arbitrary capture order
-   *  (a 2x2 has no centres so the caller has no way to pre-assign slots). */
+  /** 6 captured faces, each 4 stickers row-major. For
+   *  `resolveOrientation2x2`, capture order is arbitrary (no slot anchor on
+   *  a 2x2). For `resolveOrientation2x2InSlots`, faces are in URFDLB order
+   *  because the caller has pre-assigned slots (e.g. the user tapped a slot
+   *  before capturing). */
   readonly faces: ReadonlyArray<readonly FaceLetter[]>;
 }
 
 /**
- * Resolve a 2x2 capture into a canonical 24-char facelet string. Unlike 3x3,
- * the resolver also has to figure out which captured face goes in which slot
- * (no centre → no anchor). Search space is 6! × 4⁶ ≈ 2.95M; early-exits on
- * the first reachable candidate. A 2x2 has 24 rotation-equivalent
- * representations of the same physical cube — the solver handles any of
- * them, so returning the first hit is fine.
+ * Resolve a 2x2 capture where the caller has *already* assigned each face to
+ * its URFDLB slot (e.g. tap-slot-before-scan UI). Search space collapses from
+ * 6! × 4⁶ ≈ 2.95M to just 4⁶ = 4096 rotation combinations: ~750× faster, and
+ * — more importantly — colour-count or HSV errors can't be papered over by
+ * the resolver choosing a different slot permutation. If a state matches, it
+ * matches the physical cube the user described; if not, the user retakes
+ * the face they got wrong.
+ */
+export function resolveOrientation2x2InSlots(input: ResolveInput2x2): ResolveResult {
+  if (input.faces.length !== 6) return { ok: false, reason: 'no_valid_orientation' };
+  for (let i = 0; i < 6; i++) {
+    if (input.faces[i]!.length !== 4) return { ok: false, reason: 'no_valid_orientation' };
+  }
+  const counts: Record<string, number> = {};
+  for (const face of input.faces) {
+    for (const s of face) counts[s] = (counts[s] ?? 0) + 1;
+  }
+  for (const f of URFDLB) {
+    if (counts[f] !== 4) return { ok: false, reason: 'no_valid_orientation' };
+  }
+
+  const rotsPerFace = input.faces.map(allRotations2x2);
+  // 2x2 has 24 whole-cube rotation symmetries, but slot identity here is
+  // user-declared (they tapped "U" for the face they're calling top), so any
+  // reachable arrangement is valid and unique under this anchoring — we just
+  // return the first hit. If the user mis-tapped slots there might be zero
+  // hits (their declared layout isn't a reachable cube), which surfaces as
+  // no_valid_orientation and prompts a retake.
+  for (let r0 = 0; r0 < 4; r0++) {
+    for (let r1 = 0; r1 < 4; r1++) {
+      for (let r2 = 0; r2 < 4; r2++) {
+        for (let r3 = 0; r3 < 4; r3++) {
+          for (let r4 = 0; r4 < 4; r4++) {
+            for (let r5 = 0; r5 < 4; r5++) {
+              const candidate = buildFacelets2x2([
+                rotsPerFace[0]![r0]!,
+                rotsPerFace[1]![r1]!,
+                rotsPerFace[2]![r2]!,
+                rotsPerFace[3]![r3]!,
+                rotsPerFace[4]![r4]!,
+                rotsPerFace[5]![r5]!,
+              ]);
+              if (isReachableState2x2(candidate)) {
+                return { ok: true, facelets: candidate };
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return { ok: false, reason: 'no_valid_orientation' };
+}
+
+/**
+ * Resolve a 2x2 capture into a canonical 24-char facelet string when slots
+ * are *not* known up front. Brute force search space is 6! × 4⁶ ≈ 2.95M;
+ * early-exits on the first reachable candidate. A 2x2 has 24
+ * rotation-equivalent representations of the same physical cube — the solver
+ * handles any of them, so returning the first hit is fine.
  *
- * Pre-checks the colour count (each face letter must appear exactly 4 times)
- * before the brute force, so misclassified captures fail in microseconds
- * instead of seconds.
+ * Kept for legacy / fallback. The slot-anchored variant
+ * (`resolveOrientation2x2InSlots`) is preferred when the UI has slot info.
  */
 export function resolveOrientation2x2(input: ResolveInput2x2): ResolveResult {
   if (input.faces.length !== 6) return { ok: false, reason: 'no_valid_orientation' };

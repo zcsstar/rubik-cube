@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import CubeJS from 'cubejs';
 import type { FaceLetter } from '../cube/colors';
 import { Cube2x2 } from '../cube/Cube2x2';
-import { resolveOrientation2x2, resolveOrientation3x3 } from './resolveOrientation';
+import {
+  resolveOrientation2x2,
+  resolveOrientation2x2InSlots,
+  resolveOrientation3x3,
+} from './resolveOrientation';
 
 const SOLVED =
   'UUUUUUUUU' + 'RRRRRRRRR' + 'FFFFFFFFF' + 'DDDDDDDDD' + 'LLLLLLLLL' + 'BBBBBBBBB';
@@ -231,5 +235,76 @@ describe('resolveOrientation2x2', () => {
     faces[2]![1] = 'U';
     const result = resolveOrientation2x2({ faces });
     expect(result.ok).toBe(false);
+  });
+});
+
+describe('resolveOrientation2x2InSlots', () => {
+  it('returns valid facelets for a solved cube in URFDLB slot order', () => {
+    const result = resolveOrientation2x2InSlots({ faces: split2x2(SOLVED_2X2) });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const cube = Cube2x2.fromFacelets(result.facelets);
+      expect(cube.isSolved()).toBe(true);
+    }
+  });
+
+  it('recovers a scrambled cube under per-face rotation (slots known)', () => {
+    const scrambled = Cube2x2.solved().applyAll([
+      { face: 'R', modifier: '', width: 1 },
+      { face: 'U', modifier: '', width: 1 },
+      { face: 'F', modifier: "'", width: 1 },
+      { face: 'R', modifier: "'", width: 1 },
+    ]);
+    const target = scrambled.toFaceletString();
+    const faces = split2x2(target);
+    // Rotate each face arbitrarily — the slot index is still correct (caller
+    // pre-assigned via the tap-slot UI), but each face's rotation around its
+    // normal is unknown.
+    const rotKs = [1, 3, 2, 0, 2, 1];
+    const rotated = faces.map((f, i) => rotate2x2(f, rotKs[i]!));
+    const result = resolveOrientation2x2InSlots({ faces: rotated });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // Must recover the exact target — with slots fixed there's no
+      // permutation ambiguity, only rotation, and there's exactly one
+      // rotation per face that produces a reachable cube.
+      expect(result.facelets).toBe(target);
+    }
+  });
+
+  it('rejects a capture where colour counts are wrong', () => {
+    const faces = split2x2(SOLVED_2X2);
+    faces[1]![0] = 'U';
+    const result = resolveOrientation2x2InSlots({ faces });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('no_valid_orientation');
+  });
+
+  it('rejects a capture that breaks corner-orientation parity', () => {
+    const faces = split2x2(SOLVED_2X2);
+    faces[0]![3] = 'R';
+    faces[1]![0] = 'F';
+    faces[2]![1] = 'U';
+    const result = resolveOrientation2x2InSlots({ faces });
+    expect(result.ok).toBe(false);
+  });
+
+  it('runs noticeably faster than the brute-force resolver on the same input', () => {
+    // Not a strict perf assertion — just a smoke test that the slot-anchored
+    // path is at least an order of magnitude under the brute-force one on a
+    // typical scrambled cube. The brute-force searches 6!×4⁶ ≈ 2.95M; the
+    // slot-anchored searches just 4⁶ = 4096.
+    const scrambled = Cube2x2.solved().applyAll([
+      { face: 'U', modifier: '', width: 1 },
+      { face: 'R', modifier: '', width: 1 },
+      { face: 'F', modifier: '', width: 1 },
+    ]);
+    const target = scrambled.toFaceletString();
+    const faces = split2x2(target).map((f, i) => rotate2x2(f, (i * 3) % 4));
+    const t0 = performance.now();
+    const result = resolveOrientation2x2InSlots({ faces });
+    const elapsed = performance.now() - t0;
+    expect(result.ok).toBe(true);
+    expect(elapsed).toBeLessThan(150);
   });
 });

@@ -141,19 +141,19 @@ export const en: Messages = {
   'camera.facing.user': 'Switch to back camera',
   'camera.faceCount': 'Step {n} of 6',
 
-  // Free-order camera flow (3×3 only)
+  // Slot-anchored camera flow (2×2 + 3×3)
   'camera.free.title': 'Capture your cube',
   'camera.free.progress': '{n} of 6 faces',
-  'camera.free.hint': 'Point the camera at any face and tap Capture. Order does not matter.',
+  'camera.free.pickSlot': 'Tap a slot below, then point the camera at that face.',
+  'camera.free.armedHint': 'Show the {color} face ({slot} slot), then tap Capture.',
+  'camera.free.capturedSlot': 'Captured: {color} face ({slot})',
+  'camera.free.centerMismatch':
+    'Centre looks {seen} but you tapped the {expected} slot. Retake if this is the wrong face.',
   'camera.free.allDone': 'All 6 faces captured — tap Done to continue.',
-  'camera.free.centerLabel': 'Center is',
-  'camera.free.faceN': 'Face {n} of 6',
-  'camera.free.wrongFace': 'Wrong face?',
   'camera.free.useFace': 'Use this face',
-  'camera.free.reassignPrompt': 'Which face is this really?',
   'camera.free.resolving': 'Piecing together your cube…',
   'camera.free.errorInvalid':
-    'Some stickers look misread. Tap any face below to retake it, or edit stickers manually.',
+    'Some stickers look misread. Tap a face below to retake it, or edit stickers manually.',
   'camera.free.errorAmbiguous':
     'Could not lock in a single orientation. Retake a face for a clearer angle.',
   'camera.free.errorAction': 'Tap a captured face to retake it, or:',

@@ -140,16 +140,15 @@ export const zh: Messages = {
   'camera.facing.user': '切换到后置摄像头',
   'camera.faceCount': '第 {n} 步,共 6 步',
 
-  // 自由拍摄模式 (仅限三阶)
+  // 指定位置拍摄模式 (二阶 + 三阶)
   'camera.free.title': '拍摄魔方',
   'camera.free.progress': '已拍 {n} / 6 面',
-  'camera.free.hint': '把任意一面对准相机,点击拍摄。顺序随意。',
+  'camera.free.pickSlot': '先点击下方的一个位置,再把相机对准对应的面。',
+  'camera.free.armedHint': '把 {color} 那一面 ({slot} 位置) 对准相机,然后点击拍摄。',
+  'camera.free.capturedSlot': '已拍:{color} 面 ({slot})',
+  'camera.free.centerMismatch': '中心看起来是 {seen},但你选的是 {expected} 位置。如果拍错面请重拍。',
   'camera.free.allDone': '六面已拍完 —— 点击完成继续。',
-  'camera.free.centerLabel': '中心是',
-  'camera.free.faceN': '第 {n} 面 / 共 6 面',
-  'camera.free.wrongFace': '拍错面?',
   'camera.free.useFace': '使用这一面',
-  'camera.free.reassignPrompt': '这其实是哪一面?',
   'camera.free.resolving': '正在拼回你的魔方…',
   'camera.free.errorInvalid': '部分色块识别错误。点击下方任意一面重拍,或手动修正色块。',
   'camera.free.errorAmbiguous': '无法唯一确定方向。请重拍其中一面,角度更清晰一些。',
