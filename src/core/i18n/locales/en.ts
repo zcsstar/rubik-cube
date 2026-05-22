@@ -52,8 +52,9 @@ export const en: Messages = {
   'solve.btn.preparing': 'Preparing solver…',
   'solve.btn.reset': 'Reset',
   'solve.howItWorks': 'How it works',
-  'solve.step1': 'Press <b>Scramble</b> for a random cube, or <b>Paint my cube</b> to enter your own.',
-  'solve.step2': 'Press <b>Solve</b> to compute a solution.',
+  'solve.step1':
+    'Press {scramble} for a random cube, or use {paint} or {camera} to enter your own.',
+  'solve.step2': 'Press {solve} to compute a solution.',
   'solve.step3': 'Watch the moves play, or step through them one at a time.',
   'solve.prompt.initial': 'Scramble or paint a cube, then press Solve.',
   'solve.prompt.solving': 'Computing solution…',

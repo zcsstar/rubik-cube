@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { maybeShowPostSolveAd } from '@/ads/admob';
 import { Shuffle, Sparkles, Brush, Camera, Loader2, RotateCcw } from 'lucide-react';
 import type { CubeSize } from '@core/cube/ICube';
@@ -51,6 +51,28 @@ function SolveBody({ size }: { size: 2 | 3 }) {
   /** Pre-fill for ColorInputNet after a camera capture: jumps straight to "review and correct". */
   const [paintInitial, setPaintInitial] = useState<string | null>(null);
 
+  // Refs + intent flags drive the auto-scroll affordances on mobile:
+  //   1. Finishing camera capture → scroll down to the paint review so the
+  //      user notices the "Use this state" button.
+  //   2. Confirming the paint state → scroll back up to the cube + Solve
+  //      button so the next action is obvious.
+  // We only fire on intentional transitions (flag set in the handler) so
+  // unrelated re-renders or initial mount don't yank the viewport.
+  const cubeSectionRef = useRef<HTMLElement | null>(null);
+  const reviewSectionRef = useRef<HTMLElement | null>(null);
+  const scrollToReviewNext = useRef(false);
+  const scrollToCubeNext = useRef(false);
+
+  useEffect(() => {
+    if (mode === 'paint' && scrollToReviewNext.current) {
+      scrollToReviewNext.current = false;
+      reviewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (mode === 'idle' && scrollToCubeNext.current) {
+      scrollToCubeNext.current = false;
+      cubeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [mode]);
+
   const phases = useMemo(
     () => analyzeSolutionPhases(session.initial, session.solution),
     [session.initial, session.solution],
@@ -82,7 +104,7 @@ function SolveBody({ size }: { size: 2 | 3 }) {
       </header>
 
       <div className="grid gap-3 sm:gap-6 lg:grid-cols-2">
-        <section className="flex flex-col gap-2 sm:gap-3">
+        <section ref={cubeSectionRef} className="flex flex-col gap-2 sm:gap-3">
           <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-0 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-950 sm:p-3">
             <CubeViewer3D
               facelets={facelets}
@@ -220,7 +242,7 @@ function SolveBody({ size }: { size: 2 | 3 }) {
           )}
         </section>
 
-        <section className="flex flex-col gap-4">
+        <section ref={reviewSectionRef} className="flex flex-col gap-4">
           {mode === 'camera' ? (
             <CameraCapture
               size={size}
@@ -229,6 +251,9 @@ function SolveBody({ size }: { size: 2 | 3 }) {
                 // and fix any sticker the classifier misread before solving.
                 setPaintInitial(faceletStr);
                 setMode('paint');
+                // Scroll the paint review into view — on mobile the
+                // "Use this state" CTA otherwise sits below the fold.
+                scrollToReviewNext.current = true;
               }}
               onCancel={() => setMode('idle')}
             />
@@ -249,6 +274,9 @@ function SolveBody({ size }: { size: 2 | 3 }) {
                 session.setInitial(cube);
                 setPaintInitial(null);
                 setMode('idle');
+                // Bring the cube + Solve button back into view so the next
+                // action ("Solve") is obvious.
+                scrollToCubeNext.current = true;
               }}
               onCancel={() => {
                 setPaintInitial(null);
@@ -271,10 +299,28 @@ function SolveBody({ size }: { size: 2 | 3 }) {
                 <h2 className="mb-2 text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-200">
                   {t('solve.howItWorks')}
                 </h2>
-                <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300">
-                  <li dangerouslySetInnerHTML={{ __html: t('solve.step1') }} />
-                  <li dangerouslySetInnerHTML={{ __html: t('solve.step2') }} />
-                  <li dangerouslySetInnerHTML={{ __html: t('solve.step3') }} />
+                <ol className="list-decimal space-y-1.5 pl-5 text-sm text-slate-600 dark:text-slate-300">
+                  <li>
+                    {renderWithSlots(t('solve.step1'), {
+                      scramble: (
+                        <InlineBtn icon={<Shuffle size={12} />} label={t('solve.btn.scramble')} />
+                      ),
+                      paint: (
+                        <InlineBtn icon={<Brush size={12} />} label={t('solve.btn.paint')} />
+                      ),
+                      camera: (
+                        <InlineBtn icon={<Camera size={12} />} label={t('solve.btn.camera')} />
+                      ),
+                    })}
+                  </li>
+                  <li>
+                    {renderWithSlots(t('solve.step2'), {
+                      solve: (
+                        <InlineBtn icon={<Sparkles size={12} />} label={t('solve.btn.solve')} />
+                      ),
+                    })}
+                  </li>
+                  <li>{t('solve.step3')}</li>
                 </ol>
               </div>
               <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-900">
@@ -307,4 +353,34 @@ function SolveBody({ size }: { size: 2 | 3 }) {
       )}
     </div>
   );
+}
+
+/**
+ * Inline "button chip" used inside the How-it-works prose: icon + bold label
+ * matching the actual toolbar button, so users can map the description to
+ * the on-screen control at a glance.
+ */
+function InlineBtn({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 align-baseline text-[0.8em] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+      {icon}
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Lightweight templating: replace `{name}` placeholders in `template` with
+ * React nodes supplied via `slots`. Used so translated prose can keep its
+ * grammar while embedding interactive-looking elements (icon + label chips).
+ */
+function renderWithSlots(template: string, slots: Record<string, ReactNode>): ReactNode {
+  const parts = template.split(/(\{[^}]+\})/g);
+  return parts.map((part, i) => {
+    const m = /^\{([^}]+)\}$/.exec(part);
+    if (m && slots[m[1]!] !== undefined) {
+      return <Fragment key={i}>{slots[m[1]!]}</Fragment>;
+    }
+    return <Fragment key={i}>{part}</Fragment>;
+  });
 }
