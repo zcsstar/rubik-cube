@@ -180,7 +180,18 @@ function SolveBody({ size }: { size: 2 | 3 }) {
               type="button"
               onClick={() => {
                 setPaintInitial(null);
-                setMode((m) => (m === 'paint' ? 'idle' : 'paint'));
+                setMode((m) => {
+                  if (m === 'paint') {
+                    // Closing paint via the toolbar toggle → bring the cube
+                    // back into view, same as Cancel / Use this state.
+                    scrollToCubeNext.current = true;
+                    return 'idle';
+                  }
+                  // Opening paint → scroll to the review section so the
+                  // sticker grid + Use this state CTA are in view.
+                  scrollToReviewNext.current = true;
+                  return 'paint';
+                });
               }}
               aria-label={t('solve.btn.paint')}
               className={
@@ -281,6 +292,9 @@ function SolveBody({ size }: { size: 2 | 3 }) {
               onCancel={() => {
                 setPaintInitial(null);
                 setMode('idle');
+                // Cancel mirrors Use this state for scrolling — get the
+                // cube back on screen so the next action is obvious.
+                scrollToCubeNext.current = true;
               }}
             />
           ) : session.solution.length > 0 ? (
