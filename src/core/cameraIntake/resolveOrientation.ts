@@ -31,6 +31,38 @@ export interface ResolveInput {
   readonly faces: ReadonlyArray<readonly FaceLetter[]>;
 }
 
+/**
+ * Reorder a 3x3 free-form capture into URFDLB slot order using the centre
+ * stickers as the anchor. The camera UI lets users drop captures into any
+ * positional slot of the unfolded net — they don't have to put the white
+ * face in the "top" slot. After K-means refinement, each captured face's
+ * centre sticker uniquely identifies which URFDLB letter it represents
+ * (white→U, red→R, …), so we can rebuild the URFDLB-ordered facelet input
+ * the resolver expects.
+ *
+ * Returns null if the centres aren't a valid 6-colour set (duplicate or
+ * missing colours after refinement → classification error the user has to
+ * fix by retaking or hand-editing).
+ */
+export function remap3x3ByCenters(
+  positionalFaces: ReadonlyArray<readonly FaceLetter[]>,
+): FaceLetter[][] | null {
+  if (positionalFaces.length !== 6) return null;
+  const centres: FaceLetter[] = [];
+  for (const f of positionalFaces) {
+    if (f.length !== 9) return null;
+    centres.push(f[4]!);
+  }
+  if (new Set(centres).size !== 6) return null;
+  const out: FaceLetter[][] = [];
+  for (const letter of URFDLB) {
+    const idx = centres.indexOf(letter);
+    if (idx === -1) return null;
+    out.push([...positionalFaces[idx]!]);
+  }
+  return out;
+}
+
 export type ResolveResult =
   | { ok: true; facelets: string }
   | { ok: false; reason: 'no_valid_orientation' | 'ambiguous' };

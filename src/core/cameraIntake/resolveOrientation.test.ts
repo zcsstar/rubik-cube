@@ -3,6 +3,7 @@ import CubeJS from 'cubejs';
 import type { FaceLetter } from '../cube/colors';
 import { Cube2x2 } from '../cube/Cube2x2';
 import {
+  remap3x3ByCenters,
   resolveOrientation2x2,
   resolveOrientation2x2InSlots,
   resolveOrientation3x3,
@@ -235,6 +236,44 @@ describe('resolveOrientation2x2', () => {
     faces[2]![1] = 'U';
     const result = resolveOrientation2x2({ faces });
     expect(result.ok).toBe(false);
+  });
+});
+
+describe('remap3x3ByCenters', () => {
+  it('reorders positional captures into URFDLB by centre colour', () => {
+    // Build a solved cube in some non-URFDLB positional order: say, the user
+    // dropped the green face into "top", then orange, then blue, etc.
+    const baseFaces = splitFacelets(SOLVED);
+    // baseFaces is in URFDLB order; we permute and verify remap reverses.
+    const positional = [
+      baseFaces[2]!, // F (green) → user's top slot
+      baseFaces[4]!, // L (orange) → user's right slot
+      baseFaces[0]!, // U (white) → user's front slot
+      baseFaces[5]!, // B (blue) → user's bottom slot
+      baseFaces[3]!, // D (yellow) → user's left slot
+      baseFaces[1]!, // R (red) → user's back slot
+    ];
+    const out = remap3x3ByCenters(positional);
+    expect(out).not.toBeNull();
+    // Each remapped face's centre should match URFDLB[i].
+    for (let i = 0; i < 6; i++) {
+      expect(out![i]![4]).toBe(['U', 'R', 'F', 'D', 'L', 'B'][i]);
+    }
+  });
+
+  it('returns null if two captures share a centre colour', () => {
+    const faces = splitFacelets(SOLVED);
+    // Two captures with U centre → impossible.
+    faces[1]![4] = 'U';
+    const out = remap3x3ByCenters(faces);
+    expect(out).toBeNull();
+  });
+
+  it('returns null if a centre colour is missing', () => {
+    const faces = splitFacelets(SOLVED);
+    faces[0]![4] = 'R'; // U slot now has R centre; no slot has U centre.
+    const out = remap3x3ByCenters(faces);
+    expect(out).toBeNull();
   });
 });
 

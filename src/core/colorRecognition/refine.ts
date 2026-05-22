@@ -123,4 +123,131 @@ export function refineWithKMeans(
   return out;
 }
 
+/**
+ * Same K-means but enforces a per-colour sticker-count constraint at the
+ * assignment step. After centroids converge, each sticker is assigned to
+ * exactly one cluster — but the assignment is solved as a balanced
+ * transportation problem so that cluster `c` ends up holding exactly
+ * `expectedCounts[c]` stickers (4 for 2×2 / 9 for 3×3 / 16 for 4×4, minus
+ * any user-locked overrides).
+ *
+ * Why: unconstrained K-means is greedy per-sticker, so a single borderline
+ * red sticker can get pulled into the orange cluster under warm light —
+ * leaving R with 3 and L with 5 on a 2×2 capture. That's a count error the
+ * downstream resolver / validator can't recover from. With the constraint
+ * we force balanced counts and only ever flip the *least confident* stickers
+ * between clusters.
+ *
+ * Implementation: sorted-pair greedy initial assignment, then iterative
+ * pairwise-swap local improvement. Trivially fast at our scale (≤54
+ * stickers × 6 colours). Falls back to the unconstrained classifier if the
+ * caller's totals don't add up.
+ */
+export function refineWithKMeansConstrained(
+  samples: Sample[],
+  expectedCounts: Record<FaceLetter, number>,
+  iterations = 8,
+): Map<string, FaceLetter> {
+  let total = 0;
+  for (const f of URFDLB_FACES) total += expectedCounts[f] ?? 0;
+  if (total !== samples.length || samples.length === 0) {
+    return refineWithKMeans(samples, iterations);
+  }
+
+  // K-means iteration to get final centroids.
+  let centroids = WCA_RGB_REFS.map((c) => ({ ...c }));
+  for (let iter = 0; iter < iterations; iter++) {
+    const buckets: RGB[][] = Array.from({ length: 6 }, () => []);
+    for (const s of samples) {
+      let best = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < 6; i++) {
+        const d = distSq(s.rgb, centroids[i]!);
+        if (d < bestDist) {
+          bestDist = d;
+          best = i;
+        }
+      }
+      buckets[best]!.push(s.rgb);
+    }
+    centroids = centroids.map((prev, i) => (buckets[i]!.length === 0 ? prev : avg(buckets[i]!)));
+  }
+
+  // Anchor centroids back to WCA references (so cluster index aligns with
+  // face letter). Greedy nearest-match with no re-use.
+  const anchor = new Array<number>(6).fill(-1);
+  const used = new Array<boolean>(6).fill(false);
+  for (let ref = 0; ref < 6; ref++) {
+    let bestC = -1;
+    let bestDist = Infinity;
+    for (let c = 0; c < 6; c++) {
+      if (used[c]) continue;
+      const d = distSq(WCA_RGB_REFS[ref]!, centroids[c]!);
+      if (d < bestDist) {
+        bestDist = d;
+        bestC = c;
+      }
+    }
+    anchor[ref] = bestC;
+    if (bestC >= 0) used[bestC] = true;
+  }
+
+  // Cost matrix: cost[s][face] = distance² from sample to the centroid that
+  // represents that face.
+  const cost: number[][] = samples.map((s) =>
+    URFDLB_FACES.map((_f, ref) => distSq(s.rgb, centroids[anchor[ref]!]!)),
+  );
+
+  // Initial assignment via sorted-pair greedy: process all (sample, face)
+  // pairs cheapest-first, assigning when both the sample is unassigned and
+  // the face still has capacity. Produces valid counts; may not be globally
+  // optimal — local swap pass cleans up.
+  const remaining = new Array<number>(6);
+  for (let ref = 0; ref < 6; ref++) remaining[ref] = expectedCounts[URFDLB_FACES[ref]!]!;
+  const assigned = new Array<number>(samples.length).fill(-1);
+  const pairs: { sIdx: number; ref: number; cost: number }[] = [];
+  for (let s = 0; s < samples.length; s++) {
+    for (let ref = 0; ref < 6; ref++) {
+      pairs.push({ sIdx: s, ref, cost: cost[s]![ref]! });
+    }
+  }
+  pairs.sort((a, b) => a.cost - b.cost);
+  let unassigned = samples.length;
+  for (const p of pairs) {
+    if (unassigned === 0) break;
+    if (assigned[p.sIdx] !== -1) continue;
+    if (remaining[p.ref]! <= 0) continue;
+    assigned[p.sIdx] = p.ref;
+    remaining[p.ref]!--;
+    unassigned--;
+  }
+
+  // Local improvement: any pairwise swap that reduces total cost is taken.
+  // Counts stay balanced because swaps trade one assignment for another.
+  let improved = true;
+  while (improved) {
+    improved = false;
+    for (let i = 0; i < samples.length; i++) {
+      for (let j = i + 1; j < samples.length; j++) {
+        const ri = assigned[i]!;
+        const rj = assigned[j]!;
+        if (ri === rj) continue;
+        const before = cost[i]![ri]! + cost[j]![rj]!;
+        const after = cost[i]![rj]! + cost[j]![ri]!;
+        if (after + 1e-9 < before) {
+          assigned[i] = rj;
+          assigned[j] = ri;
+          improved = true;
+        }
+      }
+    }
+  }
+
+  const out = new Map<string, FaceLetter>();
+  for (let s = 0; s < samples.length; s++) {
+    out.set(`${samples[s]!.faceIndex},${samples[s]!.patchIndex}`, URFDLB_FACES[assigned[s]!]!);
+  }
+  return out;
+}
+
 export type { RGB, Sample };

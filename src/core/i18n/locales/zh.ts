@@ -140,18 +140,19 @@ export const zh: Messages = {
   'camera.facing.user': '切换到后置摄像头',
   'camera.faceCount': '第 {n} 步,共 6 步',
 
-  // 指定位置拍摄模式 (二阶 + 三阶)
+  // 按位置拍摄模式 (二阶 + 三阶)
   'camera.free.title': '拍摄魔方',
   'camera.free.progress': '已拍 {n} / 6 面',
-  'camera.free.pickSlot': '先点击下方的一个位置,再把相机对准对应的面。',
-  'camera.free.armedHint': '把 {color} 那一面 ({slot} 位置) 对准相机,然后点击拍摄。',
-  'camera.free.capturedSlot': '已拍:{color} 面 ({slot})',
-  'camera.free.centerMismatch': '中心看起来是 {seen},但你选的是 {expected} 位置。如果拍错面请重拍。',
+  'camera.free.pickSlot': '先点击下方的一个位置。',
+  'camera.free.armedHint':
+    '把要放到这个位置的那一面对准相机,然后点击拍摄。想换位置就点另一个格子。',
   'camera.free.allDone': '六面已拍完 —— 点击完成继续。',
   'camera.free.useFace': '使用这一面',
   'camera.free.resolving': '正在拼回你的魔方…',
   'camera.free.errorInvalid': '部分色块识别错误。点击下方任意一面重拍,或手动修正色块。',
   'camera.free.errorAmbiguous': '无法唯一确定方向。请重拍其中一面,角度更清晰一些。',
+  'camera.free.errorBadCentres':
+    '中心颜色看起来不是六个不同的面 —— 有可能两次拍了同一面,或中心识别错了。可在下方重拍任意一面。',
   'camera.free.errorAction': '点击已拍的一面重拍,或:',
   'camera.free.editManually': '手动修正色块',
   'camera.face.U.short': '白色',

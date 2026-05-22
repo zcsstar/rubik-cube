@@ -4,8 +4,9 @@ import { URFDLB } from '@core/cube/ICube';
 import type { FaceLetter } from '@core/cube/colors';
 import { FACE_COLORS } from '@core/cube/colors';
 import { classifyColor, samplePatch } from '@core/colorRecognition/classifier';
-import { refineWithKMeans, type Sample } from '@core/colorRecognition/refine';
+import { refineWithKMeansConstrained, type Sample } from '@core/colorRecognition/refine';
 import {
+  remap3x3ByCenters,
   resolveOrientation2x2InSlots,
   resolveOrientation3x3,
   type ResolveResult,
@@ -13,24 +14,25 @@ import {
 import { useI18n } from '@ui/i18n/I18nProvider';
 
 /**
- * Slot-anchored camera capture for 2×2 / 3×3. The user picks the URFDLB slot
- * they're about to scan (tap the cross-net) BEFORE capturing — this removes
- * the brittle "centre colour determines slot" routing that the previous flow
- * used (red↔orange misreads silently shipped faces to the wrong slot), and
- * gives 2×2 a slot anchor it never had before, collapsing its resolver from
- * 6!×4⁶ to just 4⁶.
+ * Position-based camera capture for 2×2 / 3×3.
  *
- * Invariants:
- *   - `captures[]` is URFDLB-indexed for both sizes.
- *   - `armedSlot` points to where the next capture lands. After Confirm it
- *     auto-advances to the next empty slot in URFDLB order; the user can
- *     also tap any slot in the cross-net to jump.
- *   - On 3×3, the captured centre is force-set to the armed slot's defining
- *     colour and marked as an override so K-means can't drift it. If the
- *     camera-read centre disagrees, we still pin to the slot but surface a
- *     warning in the preview so the user catches a mis-tap.
- *   - On 2×2 there's no centre to pin; slot identity exists only as the
- *     index and feeds the slot-anchored resolver.
+ * The user taps any empty slot in the unfolded-net mini view, then aims at
+ * any face of the cube and tap Capture. The capture lands in that slot.
+ * They can re-tap a slot to retake. *Nothing* about the flow ties a slot to
+ * a specific colour — the user just decides which face goes where in the
+ * net. After all 6 are in:
+ *   - 3×3: centres are read post-K-means and the 6 positional faces are
+ *     remapped into URFDLB order based on which centre colour landed
+ *     where. The standard rotation resolver then finds each face's
+ *     rotation. If the 6 centres aren't 6 distinct colours, that surfaces
+ *     as a colour-recognition error.
+ *   - 2×2: no centres, no remap needed. The captures feed straight into
+ *     the slot-anchored resolver; the 24 whole-cube rotation symmetries
+ *     mean any positional convention solves correctly.
+ *
+ * Constrained K-means: refinement enforces exactly N stickers per colour
+ * (4 / 9 per face minus user overrides). That kills the "R=3, L=5" count
+ * errors the unconstrained classifier let through under warm light.
  */
 
 export interface CameraCaptureFreeProps {
@@ -42,20 +44,16 @@ export interface CameraCaptureFreeProps {
 const MULTI_SAMPLE_FRAMES = 4;
 const MULTI_SAMPLE_DELAY_MS = 50;
 
-/** URFDLB cycle so colour tap-to-fix matches the rest of the app. */
+/** URFDLB cycle so tap-to-fix on a sticker matches the rest of the app. */
 const CYCLE_ORDER: readonly FaceLetter[] = ['U', 'R', 'F', 'D', 'L', 'B'];
 
 interface FaceCapture {
-  /** Stickers row-major in whatever rotation the camera saw. Length =
-   *  size×size. On 3×3 the centre (index 4) is always the armed slot's
-   *  letter (forced + override-pinned at capture time). */
+  /** Stickers row-major in whatever rotation the camera saw. */
   stickers: FaceLetter[];
-  /** Averaged per-sticker RGB samples (post multi-frame averaging), aligned
-   *  with `stickers`. Kept so the final K-means refinement pass can re-label
-   *  borderline patches against this cube's own observed centroids. */
+  /** Averaged per-sticker RGB samples. K-means uses these at resolve time. */
   rgbs: { r: number; g: number; b: number }[];
-  /** Patch indices to lock against K-means: user tap-corrections, plus the
-   *  3×3 centre (pinned by armed slot). */
+  /** Patch indices the user manually pinned (tap-to-cycle). K-means leaves
+   *  these untouched and they count against the per-colour quota. */
   overrides: Set<number>;
 }
 
@@ -68,33 +66,26 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
   const streamRef = useRef<MediaStream | null>(null);
 
   const stickersPerFace = size * size;
-  const centerIndex = size === 3 ? 4 : -1;
-  const hasCenters = size === 3;
 
   const [stage, setStage] = useState<Stage>('init');
+  /** Length 6, indexed by positional slot (same cross-net layout as URFDLB
+   *  but the meaning is purely visual: slot 0 is "top of the net", slot 2
+   *  is "front of the net", etc. No slot is tied to any particular colour. */
   const [captures, setCaptures] = useState<(FaceCapture | null)[]>(() =>
     new Array(6).fill(null),
   );
-  /** Slot the next capture lands in (URFDLB index). Null when all six slots
-   *  are filled or the user has explicitly unarmed (rare — currently the UI
-   *  only unarms when everything is captured). */
+  /** Positional slot the next capture lands in. */
   const [armedSlot, setArmedSlot] = useState<number | null>(0);
-  /** Slot currently being previewed after a capture. Always equals the slot
-   *  that was just armed when we transitioned into 'preview'. */
+  /** Slot currently being previewed after a capture. */
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-  /** 3×3 only: colour the camera *read* for the centre when it disagrees
-   *  with the armed slot's expected colour. The centre is pinned to the
-   *  slot's colour regardless; this is purely a heads-up. */
-  const [centerMismatchSeen, setCenterMismatchSeen] = useState<FaceLetter | null>(null);
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
-  const [resolveError, setResolveError] = useState<'no_valid_orientation' | 'ambiguous' | null>(
-    null,
-  );
+  const [resolveError, setResolveError] = useState<
+    'no_valid_orientation' | 'ambiguous' | 'bad_centres' | null
+  >(null);
 
   const capturedCount = useMemo(() => captures.filter((c) => c !== null).length, [captures]);
   const allCaptured = capturedCount === 6;
   const previewCap = previewIndex !== null ? captures[previewIndex] : null;
-  const armedLetter: FaceLetter | null = armedSlot !== null ? URFDLB[armedSlot]! : null;
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -138,10 +129,6 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
     return () => stopStream();
   }, [startStream, stopStream]);
 
-  /**
-   * Multi-sample the live video into a size×size sticker face. Averaging
-   * across a few frames knocks down per-frame camera noise.
-   */
   const sampleFace = useCallback(
     async (): Promise<{
       stickers: FaceLetter[];
@@ -192,8 +179,7 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
     [size, stickersPerFace],
   );
 
-  /** Find the next empty slot in URFDLB order, starting from `startAfter+1`
-   *  (wraps). Returns null if all six are full. */
+  /** Next empty slot in cross-net order, starting from `startAfter+1`. */
   const findNextEmpty = useCallback(
     (startAfter: number, caps: readonly (FaceCapture | null)[]): number | null => {
       for (let offset = 1; offset <= 6; offset++) {
@@ -209,41 +195,19 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
     if (armedSlot === null) return;
     const sampled = await sampleFace();
     if (!sampled) return;
-    let stickers = sampled.stickers;
-    const { rgbs } = sampled;
-    const overrides = new Set<number>();
-    let mismatch: FaceLetter | null = null;
-
-    if (hasCenters) {
-      const cameraSawCenter = stickers[centerIndex]!;
-      const expectedCenter = URFDLB[armedSlot]!;
-      if (cameraSawCenter !== expectedCenter) {
-        mismatch = cameraSawCenter;
-      }
-      // The user has declared this is the {expectedCenter} face. Trust the
-      // tap over the classifier — force the centre and pin so K-means can't
-      // drift it back.
-      stickers = [...stickers];
-      stickers[centerIndex] = expectedCenter;
-      overrides.add(centerIndex);
-    }
-
+    const { stickers, rgbs } = sampled;
     setCaptures((prev) => {
       const out = [...prev];
-      out[armedSlot] = { stickers, rgbs, overrides };
+      out[armedSlot] = { stickers, rgbs, overrides: new Set<number>() };
       return out;
     });
-    setCenterMismatchSeen(mismatch);
     setPreviewIndex(armedSlot);
     setStage('preview');
-  }, [armedSlot, centerIndex, hasCenters, sampleFace]);
+  }, [armedSlot, sampleFace]);
 
   const cycleSticker = useCallback(
     (patchIndex: number) => {
       if (previewIndex === null) return;
-      // 3×3 centre: ignored. Slot identity is fixed by the armed-slot tap.
-      // To change face identity, drop and re-arm a different slot.
-      if (hasCenters && patchIndex === centerIndex) return;
       setCaptures((prev) => {
         const cap = prev[previewIndex];
         if (!cap) return prev;
@@ -257,7 +221,7 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
         return out;
       });
     },
-    [previewIndex, hasCenters, centerIndex],
+    [previewIndex],
   );
 
   const retake = useCallback(() => {
@@ -267,30 +231,23 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
         out[previewIndex] = null;
         return out;
       });
-      // Stay armed on the same slot — user wants to redo this exact face.
       setArmedSlot(previewIndex);
     }
     setPreviewIndex(null);
-    setCenterMismatchSeen(null);
     setStage('live');
   }, [previewIndex]);
 
   const confirmFace = useCallback(() => {
-    // captures[previewIndex] is already filled. Advance armedSlot to the
-    // next empty slot (URFDLB order). We use functional setCaptures purely
-    // to read the latest array — no actual mutation.
     setCaptures((prev) => {
       const cur = previewIndex ?? -1;
       setArmedSlot(findNextEmpty(cur, prev));
       return prev;
     });
     setPreviewIndex(null);
-    setCenterMismatchSeen(null);
     setStage('live');
   }, [previewIndex, findNextEmpty]);
 
-  /** Tap a slot in the cross-net. Empty → arm. Filled → drop + arm (so the
-   *  user can retake that face without using the preview retake button). */
+  /** Tap a slot: arm it (drop+arm if it was filled, so the user can retake). */
   const armSlot = useCallback((slot: number) => {
     setCaptures((prev) => {
       if (prev[slot] !== null) {
@@ -302,7 +259,6 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
     });
     setArmedSlot(slot);
     setPreviewIndex(null);
-    setCenterMismatchSeen(null);
     setStage('live');
   }, []);
 
@@ -310,26 +266,50 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
     setStage('resolving');
     setResolveError(null);
     setTimeout(() => {
-      // K-means refinement across all 54 / 24 patches. Overrides (user
-      // hand-corrections and 3×3 centres pinned by the armed-slot mechanism)
-      // are skipped so anchored input always wins.
+      // Constrained K-means: enforce N per colour, minus user overrides.
+      const expectedCounts: Record<FaceLetter, number> = {
+        U: stickersPerFace,
+        R: stickersPerFace,
+        F: stickersPerFace,
+        D: stickersPerFace,
+        L: stickersPerFace,
+        B: stickersPerFace,
+      };
       const samples: Sample[] = [];
       for (let f = 0; f < 6; f++) {
         const cap = captures[f];
         if (!cap) continue;
         for (let p = 0; p < cap.rgbs.length; p++) {
-          if (cap.overrides.has(p)) continue;
+          if (cap.overrides.has(p)) {
+            // Override sticker doesn't go to K-means but takes one of its
+            // colour's allotted slots.
+            const overrideLetter = cap.stickers[p]!;
+            expectedCounts[overrideLetter] = Math.max(0, expectedCounts[overrideLetter]! - 1);
+            continue;
+          }
           samples.push({ faceIndex: f, patchIndex: p, rgb: cap.rgbs[p]! });
         }
       }
-      const refined = samples.length > 0 ? refineWithKMeans(samples) : null;
-      const faces = captures.map((cap, f) =>
+      const refined =
+        samples.length > 0 ? refineWithKMeansConstrained(samples, expectedCounts) : null;
+      const positionalFaces = captures.map((cap, f) =>
         cap!.stickers.map((orig, p) =>
           cap!.overrides.has(p) ? orig : (refined?.get(`${f},${p}`) ?? orig),
         ),
       );
-      const result: ResolveResult =
-        size === 3 ? resolveOrientation3x3({ faces }) : resolveOrientation2x2InSlots({ faces });
+
+      let result: ResolveResult;
+      if (size === 3) {
+        const reordered = remap3x3ByCenters(positionalFaces);
+        if (!reordered) {
+          setResolveError('bad_centres');
+          setStage('error');
+          return;
+        }
+        result = resolveOrientation3x3({ faces: reordered });
+      } else {
+        result = resolveOrientation2x2InSlots({ faces: positionalFaces });
+      }
       if (result.ok) {
         stopStream();
         onComplete(result.facelets);
@@ -338,7 +318,7 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
         setStage('error');
       }
     }, 0);
-  }, [captures, onComplete, size, stopStream]);
+  }, [captures, onComplete, size, stickersPerFace, stopStream]);
 
   const retakeFromIndex = useCallback((idx: number) => {
     setCaptures((prev) => {
@@ -348,12 +328,10 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
     });
     setArmedSlot(idx);
     setPreviewIndex(null);
-    setCenterMismatchSeen(null);
     setResolveError(null);
     setStage('live');
   }, []);
 
-  /** Escape hatch: bail into manual paint with whatever we have so far. */
   const editManually = useCallback(() => {
     stopStream();
     let s = '';
@@ -433,35 +411,21 @@ export function CameraCaptureFree({ size, onComplete, onCancel }: CameraCaptureF
         {stage === 'live' && (
           <>
             <FramingOverlay size={size} />
-            {armedLetter ? (
-              <p className="absolute inset-x-3 bottom-3 flex items-center justify-center gap-2 rounded-md bg-slate-950/70 px-3 py-1.5 text-center text-[12px] leading-snug text-white shadow-md backdrop-blur-sm">
-                <span
-                  aria-hidden="true"
-                  className="inline-block h-3 w-3 rounded-sm ring-1 ring-white/60"
-                  style={{ backgroundColor: FACE_COLORS[armedLetter] }}
-                />
-                <span>
-                  {t('camera.free.armedHint', {
-                    slot: armedLetter,
-                    color: t(`camera.face.${armedLetter}.short`),
-                  })}
-                </span>
-              </p>
-            ) : (
-              <p className="absolute inset-x-3 bottom-3 rounded-md bg-slate-950/70 px-3 py-1.5 text-center text-[12px] leading-snug text-white shadow-md backdrop-blur-sm">
-                {allCaptured ? t('camera.free.allDone') : t('camera.free.pickSlot')}
-              </p>
-            )}
+            <p className="absolute inset-x-3 bottom-3 rounded-md bg-slate-950/70 px-3 py-1.5 text-center text-[12px] leading-snug text-white shadow-md backdrop-blur-sm">
+              {allCaptured
+                ? t('camera.free.allDone')
+                : armedSlot !== null
+                  ? t('camera.free.armedHint')
+                  : t('camera.free.pickSlot')}
+            </p>
           </>
         )}
 
         {stage === 'preview' && previewCap && previewIndex !== null && (
           <PreviewLayer
             size={size}
-            slotLetter={URFDLB[previewIndex]!}
             stickers={previewCap.stickers}
             onCellTap={cycleSticker}
-            centerMismatch={hasCenters ? centerMismatchSeen : null}
           />
         )}
 
@@ -593,44 +557,14 @@ function FramingOverlay({ size }: { size: 2 | 3 }) {
 
 interface PreviewLayerProps {
   size: 2 | 3;
-  slotLetter: FaceLetter;
   stickers: FaceLetter[];
   onCellTap: (patchIndex: number) => void;
-  /** 3×3 only: the colour the camera read for the centre, when it
-   *  disagrees with the slot's expected colour. Surfaced as a non-blocking
-   *  warning — the centre is pinned to the slot's colour regardless. */
-  centerMismatch: FaceLetter | null;
 }
 
-function PreviewLayer({ size, slotLetter, stickers, onCellTap, centerMismatch }: PreviewLayerProps) {
+function PreviewLayer({ size, stickers, onCellTap }: PreviewLayerProps) {
   const { t } = useI18n();
-  const centerIndex = size === 3 ? 4 : -1;
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/40 px-4">
-      <p className="flex items-center gap-2 rounded-md bg-slate-950/80 px-3 py-1.5 text-sm font-semibold text-white shadow">
-        <span
-          aria-hidden="true"
-          className="inline-block h-3.5 w-3.5 rounded-sm ring-1 ring-white/60"
-          style={{ backgroundColor: FACE_COLORS[slotLetter] }}
-        />
-        <span>
-          {t('camera.free.capturedSlot', {
-            slot: slotLetter,
-            color: t(`camera.face.${slotLetter}.short`),
-          })}
-        </span>
-      </p>
-      {centerMismatch && (
-        <p className="flex items-center gap-2 rounded-md bg-amber-500/20 px-3 py-1 text-[11px] text-amber-100 shadow ring-1 ring-amber-300/40">
-          <AlertTriangle size={12} />
-          <span>
-            {t('camera.free.centerMismatch', {
-              seen: t(`camera.face.${centerMismatch}.short`),
-              expected: t(`camera.face.${slotLetter}.short`),
-            })}
-          </span>
-        </p>
-      )}
       <div
         className="grid gap-1.5 rounded-lg bg-slate-950/40 p-1.5 shadow-2xl ring-1 ring-white/15"
         style={{
@@ -639,22 +573,16 @@ function PreviewLayer({ size, slotLetter, stickers, onCellTap, centerMismatch }:
           aspectRatio: '1 / 1',
         }}
       >
-        {stickers.map((s, i) => {
-          const isCenter = i === centerIndex;
-          return (
-            <button
-              key={i}
-              type="button"
-              onClick={() => onCellTap(i)}
-              className={
-                'relative rounded-md transition active:scale-95 ' +
-                (isCenter ? 'ring-2 ring-white/80' : 'ring-1 ring-black/40')
-              }
-              style={{ backgroundColor: FACE_COLORS[s] }}
-              aria-label={`Sticker ${i + 1}: ${s}`}
-            />
-          );
-        })}
+        {stickers.map((s, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onCellTap(i)}
+            className="relative rounded-md ring-1 ring-black/40 transition active:scale-95"
+            style={{ backgroundColor: FACE_COLORS[s] }}
+            aria-label={`Sticker ${i + 1}: ${s}`}
+          />
+        ))}
       </div>
       <p className="rounded-md bg-slate-950/75 px-3 py-1 text-[11px] text-white shadow backdrop-blur-sm">
         {t('camera.preview.hint')}
@@ -671,39 +599,41 @@ interface CrossNetProps {
   onSlotTap: (slot: number) => void;
 }
 
-const FACE_POS: Record<FaceLetter, string> = {
-  U: 'col-start-2 row-start-1',
-  L: 'col-start-1 row-start-2',
-  F: 'col-start-2 row-start-2',
-  R: 'col-start-3 row-start-2',
-  B: 'col-start-4 row-start-2',
-  D: 'col-start-2 row-start-3',
-};
+/** Cross-net layout positions, indexed by capture-array slot. The slot
+ *  number is positional only — slot 0 sits at the top of the net, slot 2
+ *  in the middle (where F lives in a URFDLB net), etc. No colour identity
+ *  is implied by the position. */
+const SLOT_LAYOUT: readonly string[] = [
+  'col-start-2 row-start-1', // 0 - top
+  'col-start-3 row-start-2', // 1 - right
+  'col-start-2 row-start-2', // 2 - middle (front)
+  'col-start-2 row-start-3', // 3 - bottom
+  'col-start-1 row-start-2', // 4 - left
+  'col-start-4 row-start-2', // 5 - far right (back)
+];
 
 /**
- * Interactive cross-net. Empty slots show the slot letter and a low-opacity
- * tint of the expected face colour so the user can see "this is F, show me
- * the green-centre face here." Tap = arm. Tap a filled slot = drop the
- * capture so the user can re-shoot that face.
+ * Interactive cross-net. Empty slots are dashed boxes with no colour hint.
+ * Tap empty → arm. Tap filled → drop the capture and arm so the user can
+ * re-shoot. The currently armed slot is ringed indigo.
  */
 function CrossNet({ size, captures, armedSlot, previewIndex, onSlotTap }: CrossNetProps) {
   const stickersPerFace = size * size;
   const cellSize = size === 3 ? '0.75rem' : '1rem';
   return (
     <div className="grid grid-cols-4 grid-rows-3 gap-0.5 self-center">
-      {URFDLB.map((face, idx) => {
+      {SLOT_LAYOUT.map((pos, idx) => {
         const cap = captures[idx];
         const isArmed = idx === armedSlot && previewIndex === null;
         const isPreviewing = idx === previewIndex;
-        const slotColor = FACE_COLORS[face];
         return (
           <button
-            key={face}
+            key={idx}
             type="button"
             onClick={() => onSlotTap(idx)}
-            aria-label={face}
+            aria-label={`Slot ${idx + 1}`}
             className={
-              FACE_POS[face] +
+              pos +
               ' relative rounded p-0.5 transition ' +
               (isArmed
                 ? 'ring-2 ring-indigo-300 bg-indigo-500/15'
@@ -727,21 +657,12 @@ function CrossNet({ size, captures, armedSlot, previewIndex, onSlotTap }: CrossN
                     }
                     style={{
                       width: cellSize,
-                      backgroundColor: letter
-                        ? FACE_COLORS[letter]
-                        : isArmed
-                          ? slotColor + '60'
-                          : slotColor + '24',
+                      backgroundColor: letter ? FACE_COLORS[letter] : 'transparent',
                     }}
                   />
                 );
               })}
             </div>
-            {!cap && (
-              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white drop-shadow-md">
-                {face}
-              </span>
-            )}
           </button>
         );
       })}
@@ -750,7 +671,7 @@ function CrossNet({ size, captures, armedSlot, previewIndex, onSlotTap }: CrossN
 }
 
 interface ErrorLayerProps {
-  reason: 'no_valid_orientation' | 'ambiguous' | null;
+  reason: 'no_valid_orientation' | 'ambiguous' | 'bad_centres' | null;
   captures: (FaceCapture | null)[];
   onRetakeIndex: (idx: number) => void;
   onEditManually: () => void;
@@ -758,23 +679,39 @@ interface ErrorLayerProps {
 
 function ErrorLayer({ reason, captures, onRetakeIndex, onEditManually }: ErrorLayerProps) {
   const { t } = useI18n();
-  const msgKey = reason === 'ambiguous' ? 'camera.free.errorAmbiguous' : 'camera.free.errorInvalid';
+  const msgKey =
+    reason === 'ambiguous'
+      ? 'camera.free.errorAmbiguous'
+      : reason === 'bad_centres'
+        ? 'camera.free.errorBadCentres'
+        : 'camera.free.errorInvalid';
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/85 px-6 text-center">
       <AlertTriangle size={28} className="text-amber-300" />
       <p className="max-w-sm text-sm text-white">{t(msgKey)}</p>
       <p className="text-xs text-white/70">{t('camera.free.errorAction')}</p>
       <div className="flex flex-wrap justify-center gap-1.5">
-        {URFDLB.map((f, idx) => (
+        {captures.map((cap, idx) => (
           <button
-            key={f}
+            key={idx}
             type="button"
             onClick={() => onRetakeIndex(idx)}
-            disabled={!captures[idx]}
-            className="flex h-8 min-w-[44px] items-center justify-center rounded-md border border-white/30 text-xs font-semibold disabled:opacity-30"
-            style={{ backgroundColor: FACE_COLORS[f], color: '#0f172a' }}
+            disabled={!cap}
+            className="flex h-12 w-12 items-center justify-center rounded-md border border-white/30 bg-white/5 p-1 disabled:opacity-30"
           >
-            {f}
+            {cap ? (
+              <div className="grid grid-cols-3 gap-[1px]">
+                {cap.stickers.slice(0, 9).map((s, j) => (
+                  <div
+                    key={j}
+                    className="h-2 w-2 rounded-[1px]"
+                    style={{ backgroundColor: FACE_COLORS[s] }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <span className="text-[10px] font-semibold text-white/60">{idx + 1}</span>
+            )}
           </button>
         ))}
       </div>
