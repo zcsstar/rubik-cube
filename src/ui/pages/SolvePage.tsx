@@ -188,7 +188,7 @@ function SolveBody({ size }: { size: 2 | 3 }) {
             <button
               type="button"
               onClick={session.solve}
-              disabled={session.status === 'solving' || !isScrambled}
+              disabled={session.status === 'solving' || !isScrambled || mode !== 'idle'}
               className="flex h-9 items-center gap-2 rounded-md bg-indigo-500 px-3 text-sm font-medium text-white shadow-sm enabled:hover:bg-indigo-600 disabled:opacity-50"
             >
               {session.status === 'solving' || session.solverInit === 'preparing' ? (
