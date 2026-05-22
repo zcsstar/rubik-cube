@@ -262,6 +262,7 @@ function CaseDemo({ caseData, size }: { caseData: TutorialCase; size: CubeSize }
           onStepChange={player.requestStep}
           onPlayingChange={player.setPlaying}
           titleKey="player.title.walk"
+          inlineMobileControls
         />
       </div>
     </section>

@@ -29,6 +29,15 @@ export interface StepViewerProps {
   onPlayingChange: (playing: boolean) => void;
   /** Pause between auto-advanced moves in ms (in addition to animation time). */
   pauseMs?: number;
+  /**
+   * Render the prev/play/next/reset controls on mobile too. Default false:
+   * SolvePage hides them and supplies its own fixed-bottom `MobileStepBar`
+   * because its move lists (Kociemba solutions) can run 20+ chips and would
+   * push the inline controls off-screen. TutorialPage's algorithms are
+   * short — set this to `true` so users can play the last move without
+   * an external bar.
+   */
+  inlineMobileControls?: boolean;
 }
 
 function findPhase(phases: readonly PhaseSpec[] | undefined, step: number): PhaseSpec | undefined {
@@ -51,6 +60,7 @@ export function StepViewer({
   onStepChange,
   onPlayingChange,
   pauseMs = 250,
+  inlineMobileControls = false,
 }: StepViewerProps) {
   const { t } = useI18n();
   const totalSteps = moves.length;
@@ -121,10 +131,16 @@ export function StepViewer({
         </div>
       )}
 
-      {/* Step controls — sized for touch (~44pt min). Hidden on mobile;
-          SolvePage renders a fixed-bottom step bar there so play/prev/next
-          stay reachable without scrolling past the move chips. */}
-      <div className="hidden items-center gap-2 sm:flex">
+      {/* Step controls — sized for touch (~44pt min). Hidden on mobile by
+          default because SolvePage uses a fixed-bottom step bar to stay
+          reachable past long Kociemba move lists. Set `inlineMobileControls`
+          on callers (e.g. TutorialPage) whose move lists are short enough
+          that the inline row works on phones. */}
+      <div
+        className={
+          'items-center gap-2 ' + (inlineMobileControls ? 'flex' : 'hidden sm:flex')
+        }
+      >
         <button
           type="button"
           onClick={() => onStepChange(0)}
