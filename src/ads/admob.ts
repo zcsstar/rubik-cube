@@ -51,20 +51,6 @@ async function ensureInitialized(): Promise<void> {
       initializeForTesting: false,
     });
 
-    // iOS 14+ ATT prompt. On Android this resolves immediately and is a
-    // no-op. The user is shown Apple's system prompt; if denied, AdMob
-    // falls back to non-personalized ads (fill rate drops but still works).
-    if (Capacitor.getPlatform() === 'ios') {
-      try {
-        const status = await AdMob.trackingAuthorizationStatus();
-        if (status.status === 'notDetermined') {
-          await AdMob.requestTrackingAuthorization();
-        }
-      } catch (err) {
-        console.warn('[ads] ATT request failed', err);
-      }
-    }
-
     // UMP consent (GDPR / IDFA). If a consent form is required, show it
     // before requesting any ad. Failures here shouldn't block the app —
     // worst case the user sees non-personalized ads.

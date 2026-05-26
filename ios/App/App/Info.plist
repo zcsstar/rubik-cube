@@ -57,8 +57,6 @@
 			<string>cstr6suwn9.skadnetwork</string>
 		</dict>
 	</array>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>Cubist uses this identifier to show you more relevant ads. The app stays fully free either way — choosing "Ask App Not to Track" only switches ads to non-personalised.</string>
 	<!-- Required so navigator.mediaDevices.getUserMedia is exposed inside
 	     iOS WKWebView. Without this key WKWebView strips the API entirely
 	     and the in-app cube scanner falls back to "your browser does not
