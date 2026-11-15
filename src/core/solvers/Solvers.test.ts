@@ -22,38 +22,71 @@ function randomScrambleString(faces: FaceLetter[], len: number): string {
   return seq.join(' ');
 }
 
-describe('Solver2x2BFS', () => {
+describe('Solver2x2Optimal', () => {
   it('solves a solved cube with empty move list', async () => {
     const solver = getSolver(2);
     const moves = await solver.solve(Cube2x2.solved());
     expect(moves).toEqual([]);
   });
 
-  it('solves 50 random scrambles within the move budget', async () => {
+  it("solves 200 random scrambles in at most 11 turns (God's number)", async () => {
     const solver = getSolver(2);
-    for (let i = 0; i < 50; i++) {
-      const scramble = parseMoves(randomScrambleString(FACES, 12));
+    for (let i = 0; i < 200; i++) {
+      const scramble = parseMoves(randomScrambleString(FACES, 25));
       const scrambled = Cube2x2.solved().applyAll(scramble);
       const solution = await solver.solve(scrambled);
-      const result = scrambled.applyAll(solution);
-      expect(result.isSolved()).toBe(true);
+      expect(solution.length).toBeLessThanOrEqual(11);
+      expect(scrambled.applyAll(solution).isSolved()).toBe(true);
     }
   }, 30_000);
 
-  it('solves odd-parity states without hanging (the camera-capture bug)', async () => {
-    // Repro of the user-reported bug: a 2x2 scrambled with a single face turn
-    // has odd corner permutation parity. The 3x3 embedding pins edges to
-    // even parity, so the embedded 3x3 is unsolvable and Kociemba would
-    // exhaust its full depth-22 search without returning — looking like a
-    // hang. Solver2x2BFS works around this by prepending a face move to
-    // re-balance parity before embedding; the prefix is included in the
-    // returned solution so it still solves the original cube end-to-end.
-    const oddParityScramble = Cube2x2.solved().apply({ face: 'U', modifier: '', width: 1 });
+  it('never needs more turns than a short scramble took', async () => {
     const solver = getSolver(2);
-    const solution = await solver.solve(oddParityScramble);
-    expect(solution.length).toBeGreaterThan(0);
-    expect(oddParityScramble.applyAll(solution).isSolved()).toBe(true);
-  }, 30_000);
+    for (let len = 1; len <= 5; len++) {
+      for (let i = 0; i < 20; i++) {
+        const scrambled = Cube2x2.solved().applyAll(parseMoves(randomScrambleString(FACES, len)));
+        const solution = await solver.solve(scrambled);
+        expect(solution.length).toBeLessThanOrEqual(len);
+        expect(scrambled.applyAll(solution).isSolved()).toBe(true);
+      }
+    }
+  });
+
+  it('undoes a single turn of any face with a single turn', async () => {
+    // D, L and B turns move the DBL corner the solver keeps still; the cube
+    // is still one turn from solved (the opposite face, cube held rotated).
+    const solver = getSolver(2);
+    for (const face of FACES) {
+      for (const modifier of ['', "'", '2'] as const) {
+        const scrambled = Cube2x2.solved().apply({ face, modifier, width: 1 });
+        const solution = await solver.solve(scrambled);
+        expect(solution).toHaveLength(1);
+        expect(scrambled.applyAll(solution).isSolved()).toBe(true);
+      }
+    }
+  });
+
+  it('solves the cube in any whole-cube orientation', async () => {
+    const solver = getSolver(2);
+    const scramble = parseMoves("R U2 F' R' U F2 R U'");
+    // Cube2x2 has no rotation moves; on a 2×2, R L' is x, U D' is y and F B' is z.
+    const rotations = ['', "R L'", "U D'", "F B'", "R' L", 'U2 D2', "F' B", "R L' U D'", "U D' F2 B2"];
+    for (const rotation of rotations) {
+      const start = rotation ? Cube2x2.solved().applyAll(parseMoves(rotation)) : Cube2x2.solved();
+      const scrambled = start.applyAll(scramble);
+      const solution = await solver.solve(scrambled);
+      expect(solution.length).toBeLessThanOrEqual(scramble.length);
+      expect(scrambled.applyAll(solution).isSolved()).toBe(true);
+    }
+  });
+
+  it('rejects a cube with one corner twisted in place', async () => {
+    const facelets = Cube2x2.solved().toFaceletString().split('');
+    // Twist the URF corner (stickers U3, R4, F9) clockwise.
+    [facelets[3], facelets[4], facelets[9]] = [facelets[9]!, facelets[3]!, facelets[4]!];
+    const twisted = Cube2x2.fromFacelets(facelets.join(''));
+    await expect(getSolver(2).solve(twisted)).rejects.toThrow(/invalid/);
+  });
 });
 
 describe('Solver3x3Kociemba', () => {

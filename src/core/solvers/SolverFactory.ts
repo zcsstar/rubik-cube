@@ -1,6 +1,6 @@
 import type { ISolver } from './ISolver';
 import type { CubeSize } from '../cube/ICube';
-import { Solver2x2BFS } from './Solver2x2BFS';
+import { Solver2x2Optimal } from './Solver2x2Optimal';
 import { Solver3x3Kociemba } from './Solver3x3Kociemba';
 import { BeginnerSolver3x3 } from './BeginnerSolver3x3';
 
@@ -21,8 +21,8 @@ function k({ size, flavour }: CacheKey) {
  * code depends solely on ISolver.
  *
  *   - flavour === 'fast' (default): the shortest-move solver for that size.
- *     For 3×3, this is Kociemba (≤22 moves). For 2×2, the embedded-3×3
- *     trick. For 4×4, not yet implemented.
+ *     For 3×3, this is Kociemba (≤22 moves). For 2×2, an optimal IDA* search
+ *     (≤11 turns). For 4×4, not yet implemented.
  *   - flavour === 'beginner': for 3×3, returns the layer-by-layer
  *     pedagogical solver whose output is labelled by phase (cross / first
  *     layer / middle layer / last layer). For 2×2, falls back to 'fast'
@@ -37,7 +37,7 @@ export function getSolver(size: CubeSize, flavour: SolverFlavour = 'fast'): ISol
   let solver: ISolver;
   switch (size) {
     case 2:
-      solver = new Solver2x2BFS();
+      solver = new Solver2x2Optimal();
       break;
     case 3:
       solver = flavour === 'beginner' ? new BeginnerSolver3x3() : new Solver3x3Kociemba();
