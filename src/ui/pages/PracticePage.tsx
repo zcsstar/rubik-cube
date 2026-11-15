@@ -38,7 +38,9 @@ export function PracticePage({ size }: PracticePageProps) {
     );
   }
 
-  return <PracticeBody tutorial={tutorial} size={size} />;
+  // Keyed by size: /practice/2 and /practice/3 render the same component, and
+  // without a fresh body the 3×3 step id carried over and no 2×2 step was selected.
+  return <PracticeBody key={size} tutorial={tutorial} size={size} />;
 }
 
 function newSolved(size: CubeSize): ICube {
@@ -250,7 +252,7 @@ function CaseInfo({
       {showAnswer ? (
         <div className="mt-3 flex flex-wrap gap-1.5 rounded-md bg-amber-50/60 p-2 dark:bg-amber-950/30">
           {algorithm.map((m, i) => (
-            <MoveCard key={i} move={m} variant="small" />
+            <MoveCard key={i} move={m} variant="small" cubeSize={size} />
           ))}
         </div>
       ) : (

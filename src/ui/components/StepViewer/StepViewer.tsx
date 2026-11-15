@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw } from 'lucide-react';
 import { useEffect } from 'react';
 import type { Move } from '@core/cube/moves';
+import type { CubeSize } from '@core/cube/ICube';
 import { MoveCard } from '@ui/components/MoveCard/MoveCard';
 import { useI18n } from '@ui/i18n/I18nProvider';
 
@@ -38,6 +39,8 @@ export interface StepViewerProps {
    * an external bar.
    */
   inlineMobileControls?: boolean;
+  /** Cube the moves belong to, for the move icons. Default 3. */
+  cubeSize?: CubeSize;
 }
 
 function findPhase(phases: readonly PhaseSpec[] | undefined, step: number): PhaseSpec | undefined {
@@ -61,6 +64,7 @@ export function StepViewer({
   onPlayingChange,
   pauseMs = 250,
   inlineMobileControls = false,
+  cubeSize = 3,
 }: StepViewerProps) {
   const { t } = useI18n();
   const totalSteps = moves.length;
@@ -108,7 +112,7 @@ export function StepViewer({
           <div className="mb-1 text-xs font-medium uppercase tracking-wider text-slate-400">
             {t('player.nextMove')}
           </div>
-          <MoveCard move={upcomingMove} variant="large" />
+          <MoveCard move={upcomingMove} variant="large" cubeSize={cubeSize} />
         </div>
       ) : (
         <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 text-center text-sm font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200">
@@ -123,6 +127,7 @@ export function StepViewer({
               key={i}
               move={move}
               variant="small"
+              cubeSize={cubeSize}
               done={i < currentStep}
               active={i === currentStep}
               onClick={() => onStepChange(i)}

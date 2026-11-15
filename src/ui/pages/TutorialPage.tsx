@@ -38,7 +38,8 @@ export function TutorialPage({ size }: TutorialPageProps) {
     );
   }
 
-  return <TutorialBody tutorial={tutorial} />;
+  // Keyed by size so switching 2×2 ↔ 3×3 starts on step 1 of the new tutorial.
+  return <TutorialBody key={size} tutorial={tutorial} />;
 }
 
 function TutorialBody({ tutorial }: { tutorial: Tutorial }) {
@@ -222,7 +223,7 @@ function CaseDemo({ caseData, size }: { caseData: TutorialCase; size: CubeSize }
         <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">{caseData.description}</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {algorithm.map((m, i) => (
-            <MoveCard key={i} move={m} variant="small" />
+            <MoveCard key={i} move={m} variant="small" cubeSize={size} />
           ))}
         </div>
       </div>
@@ -263,6 +264,7 @@ function CaseDemo({ caseData, size }: { caseData: TutorialCase; size: CubeSize }
           onPlayingChange={player.setPlaying}
           titleKey="player.title.walk"
           inlineMobileControls
+          cubeSize={size}
         />
       </div>
     </section>

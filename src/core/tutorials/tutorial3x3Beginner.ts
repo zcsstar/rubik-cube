@@ -62,7 +62,7 @@ export const tutorial3x3Beginner: Tutorial = {
       intro:
         "Find a white corner on the bottom layer. Spin the bottom (D) until that corner sits directly under where it belongs (between its two side colours). Then repeat the trigger R U R' U' until the corner pops up the right way. Three repeats at most per corner.",
       tips: [
-        "The trigger R U R' U' is also called the \"sexy move\".",
+        "You'll use the trigger R U R' U' all through the solve — it's worth learning by heart.",
         'If a white corner is stuck on the top in the wrong place, do the trigger once to kick it down to the bottom first.',
       ],
       cases: [

@@ -1,6 +1,7 @@
 import type { Move } from '@core/cube/moves';
 import { isFaceLetter, isRotationLetter, isSliceLetter, moveToString } from '@core/cube/moves';
 import type { FaceLetter } from '@core/cube/colors';
+import type { CubeSize } from '@core/cube/ICube';
 import { FACE_COLORS } from '@core/cube/colors';
 import type { TranslateFn } from '@core/i18n';
 import { useI18n } from '@ui/i18n/I18nProvider';
@@ -14,6 +15,8 @@ export interface MoveCardProps {
   /** Whether this is the currently-highlighted move in the chip list. */
   active?: boolean;
   onClick?: () => void;
+  /** Cube the move belongs to; the face icon draws that many rows and columns. Default 3. */
+  cubeSize?: CubeSize;
 }
 
 /**
@@ -44,11 +47,13 @@ export function describeMove(move: Move, t: TranslateFn): string {
 function FaceArrowIcon({
   target,
   modifier,
+  cubeSize = 3,
   size = 56,
   className,
 }: {
   target: Move['face'];
   modifier: Move['modifier'];
+  cubeSize?: CubeSize;
   size?: number;
   className?: string;
 }) {
@@ -57,8 +62,10 @@ function FaceArrowIcon({
   const isDouble = modifier === '2';
   const stroke = '#0f172a';
   // Slice / rotation moves don't have a face to highlight; show their letter
-  // in the centre of the icon instead of the 3×3 grid lines.
+  // in the centre of the icon instead of the face's grid lines.
   const showLetter = !isFaceLetter(target);
+  // Grid lines between the face's rows and columns (the face spans 6–58).
+  const gridLines = Array.from({ length: cubeSize - 1 }, (_, i) => 6 + (52 * (i + 1)) / cubeSize);
   return (
     <svg
       className={className}
@@ -70,14 +77,13 @@ function FaceArrowIcon({
       aria-hidden="true"
     >
       <rect x="6" y="6" width="52" height="52" rx="8" fill={color} stroke={stroke} strokeWidth="2" />
-      {!showLetter && (
-        <>
-          <line x1="23.3" y1="6" x2="23.3" y2="58" stroke={stroke} strokeOpacity="0.25" strokeWidth="1" />
-          <line x1="40.6" y1="6" x2="40.6" y2="58" stroke={stroke} strokeOpacity="0.25" strokeWidth="1" />
-          <line x1="6" y1="23.3" x2="58" y2="23.3" stroke={stroke} strokeOpacity="0.25" strokeWidth="1" />
-          <line x1="6" y1="40.6" x2="58" y2="40.6" stroke={stroke} strokeOpacity="0.25" strokeWidth="1" />
-        </>
-      )}
+      {!showLetter &&
+        gridLines.map((p) => (
+          <g key={p} stroke={stroke} strokeOpacity="0.25" strokeWidth="1">
+            <line x1={p} y1="6" x2={p} y2="58" />
+            <line x1="6" y1={p} x2="58" y2={p} />
+          </g>
+        ))}
       {showLetter && (
         <text
           x="32"
@@ -137,13 +143,20 @@ function FaceArrowIcon({
   );
 }
 
-export function MoveCard({ move, variant = 'small', done, active, onClick }: MoveCardProps) {
+export function MoveCard({
+  move,
+  variant = 'small',
+  done,
+  active,
+  onClick,
+  cubeSize = 3,
+}: MoveCardProps) {
   const { t } = useI18n();
   const notation = moveToString(move);
   if (variant === 'large') {
     return (
       <div className="flex items-center gap-4 rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-4 shadow-sm dark:border-indigo-900 dark:from-indigo-950 dark:to-slate-900">
-        <FaceArrowIcon target={move.face} modifier={move.modifier} size={68} />
+        <FaceArrowIcon target={move.face} modifier={move.modifier} cubeSize={cubeSize} size={68} />
         <div className="flex flex-col">
           <div className="flex items-baseline gap-2">
             <span className="font-mono text-2xl font-semibold text-slate-900 dark:text-slate-50">
@@ -173,7 +186,13 @@ export function MoveCard({ move, variant = 'small', done, active, onClick }: Mov
             : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800')
       }
     >
-      <FaceArrowIcon target={move.face} modifier={move.modifier} size={20} className="shrink-0" />
+      <FaceArrowIcon
+        target={move.face}
+        modifier={move.modifier}
+        cubeSize={cubeSize}
+        size={20}
+        className="shrink-0"
+      />
       {notation}
     </button>
   );

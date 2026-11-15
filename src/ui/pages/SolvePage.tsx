@@ -276,7 +276,7 @@ function SolveBody({ size }: { size: 2 | 3 }) {
                 // The user may have painted the cube in any of 24 valid
                 // orientations (e.g. blue-on-top instead of white). Re-rotate
                 // to canonical before handing it to the solver. The 2x2 path
-                // doesn't need this — Solver2x2BFS handles arbitrary
+                // doesn't need this — Solver2x2Optimal handles arbitrary
                 // orientations and parity directly.
                 const canonical =
                   size === 3 ? (canonicalize3x3(faceletStr) ?? faceletStr) : faceletStr;
@@ -304,6 +304,7 @@ function SolveBody({ size }: { size: 2 | 3 }) {
               playing={session.playing}
               animating={!!session.animating}
               phases={phaseSpecs}
+              cubeSize={size}
               onStepChange={session.requestStep}
               onPlayingChange={session.setPlaying}
             />
