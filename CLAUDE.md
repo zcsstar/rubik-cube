@@ -86,23 +86,16 @@ iterates Xcodes highest-to-lowest, runs `xcodebuild -version`, and
 picks the first one whose build number ends in a digit (i.e. not a
 beta seed marker like `17F5022i`).
 
-### AdMob plugin patch
-`@capacitor-community/admob` 8.x positions a bottom banner from the window
-insets on Android 15+ (a listener on the DecorView) and ignores the
-user-provided `margin`. Capacitor 8 sometimes lifts the WebView above the
-system bars itself (older WebViews) and sometimes runs it edge-to-edge, so
-the inset was double-counted on some devices: a gap under the banner and the
-banner over the page. We patch `BannerExecutor.java` to keep a bottom banner
-`margin` dp above the WebView's bottom edge, measured from the layout, on
-every Android version; the JS side (`showBottomBanner` in
-[`src/ads/admob.ts`](src/ads/admob.ts)) passes tab-bar height + the page's
-safe-area inset on Android, tab-bar height alone on iOS (the iOS plugin
-already pins the banner to the safe area). The patch is in
-[`patches/`](patches/) and applied via
-[`patch-package`](https://github.com/ds300/patch-package) on `npm
-install`. Don't bump the plugin major without verifying the patch still
-applies. To regenerate it, delete the plugin's `android/build` and
-`android/.gradle` folders first, or patch-package diffs Gradle's output.
+### AdMob plugin and the banner position
+`@capacitor-community/admob` is pinned to `~8.3.0`. From 8.3 the Android
+banner adds only the system-bar inset Capacitor leaves to the page (none
+when Capacitor lifts the WebView above the bars, the bar height when the
+WebView runs edge-to-edge), and iOS pins the banner to the safe-area guide.
+So `showBottomBanner` in [`src/ads/admob.ts`](src/ads/admob.ts) passes the
+tab-bar height alone as `margin`, and the banner sits right on the tab bar
+on both platforms. 8.0 needed a local patch for this (removed with the
+upgrade, 2026-11); after any plugin bump, check on a device that the banner
+still touches the tab bar and the page's footer scrolls clear of it.
 
 ### Cloudflare Web Analytics gate
 [`index.html`](index.html) loads the CF Analytics beacon but only when
@@ -181,13 +174,14 @@ with the owner's other apps. Keep live ads for Production.
 | `Error cloning certificates git repo` | `MATCH_GIT_BASIC_AUTHORIZATION` malformed (trailing newline) or PAT expired |
 | `Unsupported SDK or Xcode version` (90534) | Beta-seed Xcode picked; check the "Select Xcode" step's build-suffix filter |
 | Android build links fail on `mipmap/ic_launcher_background` | Adaptive-icon XML regression — re-apply the `@color/...` patch |
+| Gap between the banner and the tab bar, or the banner over the page | AdMob plugin bump changed how the banner margin counts insets — see "AdMob plugin and the banner position" |
 | Play console rejects upload "no signing key" | `keystore.properties` missing on the machine running `release:android` |
 
 ## When in doubt
 
 If a step in the release pipeline fails in a way that isn't in the
 table above, the failure is almost always in the *most recent* change
-to the workflow, plugin patch, or Capacitor template. Check the diff
+to the workflow, the AdMob plugin, or Capacitor template. Check the diff
 against the last known-good run before re-deriving from scratch.
 
 Operational specifics that aren't in this file (Apple ID, exact secret

@@ -57,27 +57,58 @@ Production track only; testing tracks get `npm run release:android:test`
 
 | Surface                          | Format        | Frequency                                                  |
 |----------------------------------|---------------|------------------------------------------------------------|
-| Cold start                       | Interstitial  | 1× per session, shown 1.5s after launch; skipped once the user has touched the app or if it isn't loaded within 10s |
-| Home page                        | Adaptive banner | Always visible, anchored bottom                          |
-| Learn / Tutorial pages           | Adaptive banner | Always visible, anchored bottom                          |
-| After completing a solution      | Interstitial  | At most 1× per 5 min, never before the first solve of session |
-| Solve in-flow, Practice, Camera  | None          | —                                                          |
+| Cold start                       | App open      | 1× per session, 1.5s after launch; skipped once the user has touched the app or if it isn't loaded within 10s |
+| Back from the background         | App open      | After at least 5 min away |
+| Home page                        | Adaptive banner | Always visible, just above the tab bar                   |
+| Learn / Tutorial pages           | Adaptive banner | Always visible, just above the tab bar                   |
+| A solution played to the end, or a Practice case solved | Interstitial | Never for the session's first completed task |
+| Solve in-flow, Practice, Camera  | No banner     | Their controls sit at the bottom and are tapped repeatedly — a banner there invites accidental clicks, which AdMob treats as invalid traffic |
 
-The cooldowns are enforced in `src/ads/admob.ts` — adjust there if you want
-to tune. The body CSS reserves `padding-bottom: var(--ad-banner-h)` so the
-app footer is not covered by the OS-level banner overlay.
+Every full-screen ad (app open or interstitial) is at most 1× per 5 min.
+The rules live in `src/ads/admob.ts`. App open is Google's format for app
+launch: it carries its own "Continue to app" button, so the user can skip
+straight in. The page reserves `--ad-banner-h` at its end (Layout in
+`src/App.tsx`) so the footer scrolls clear of the banner.
+
+Ad units (publisher 2269650446819543), also in `src/ads/adIds.ts`:
+
+| Unit | iOS | Android |
+|---|---|---|
+| Banner | `/5968405918` | `/8237906648` |
+| Interstitial | `/1808229661` | `/2901819480` |
+| App open (created 2026-11-15) | `/8223253648` | `/1268952154` |
+
+## Revenue ideas to research (owner, 2026-11-15)
+
+Done in 1.0.10–1.0.11: GDPR consent message for both apps (EEA/UK users can
+now get personalised ads), app open ads, interstitial after a solved Practice
+case. Still to look at:
+
+1. **Mediation / bidding** — let other networks (Meta Audience Network,
+   AppLovin, Unity, …) bid alongside AdMob for higher prices, no UI change.
+   Needs accounts with those networks and their SDK adapters (a native build).
+2. **iOS App Tracking Transparency** — without it iOS ads are
+   non-personalised and earn less, and iOS earns most of Cubist's revenue.
+   1.0.9 removed ATT to clear App Review; find out why it was rejected
+   before adding it back.
+3. **In-app privacy settings** — a "Privacy settings" entry that shows the
+   UMP privacy options form, so users can change their consent (Google
+   expects one when the form is required).
+4. **Growth** — revenue scales with users: store listing, screenshots,
+   keywords, promotion.
+5. Not recommended: banners on Solve / Practice / Camera (accidental clicks,
+   less room for the cube; banner prices are low).
 
 ## Consent & tracking
 
-- **iOS ATT prompt** — auto-shown on first AdMob init via
-  `AdMob.requestTrackingAuthorization()`. The user-facing copy lives in
-  `NSUserTrackingUsageDescription` in `Info.plist` and explains that the
-  app stays free either way. Updating it is fair game; review guidelines
-  require it to actually describe what tracking is used for.
-- **UMP (GDPR consent form)** — Created in AdMob → *Privacy & messaging*.
-  The app calls `requestConsentInfo()` and `showConsentForm()` on first
-  launch when required. No engineering work; configure the messages in
-  the AdMob console.
+- **iOS ATT prompt** — removed in 1.0.9 to clear App Review; iOS ads are
+  non-personalised until it comes back (see "Revenue ideas" above).
+- **UMP (GDPR consent form)** — AdMob → *Privacy & messaging* → European
+  regulations → "Cubist - GDPR consent" (English and Simplified Chinese;
+  Consent, Do not consent, Manage options; both apps), published
+  2026-11-15 — before that neither app had one, and `requestConsentInfo()`
+  failed with "no form(s) configured". The app calls `requestConsentInfo()`
+  and `showConsentForm()` on first launch when required.
 
 ## Verifying the integration
 

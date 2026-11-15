@@ -1,21 +1,26 @@
 // Thin wrapper around @capacitor-community/admob. All public functions are
 // safe to call on web — they no-op when not running inside Capacitor.
 //
-// Placement policy (final spec):
-//   - Cold-start interstitial: at most 1× per session, shown ~1.5s after
-//     launch so the splash is visible first — and only while the user hasn't
-//     touched the app yet and within COLD_START_DEADLINE_MS of launch. An ad
-//     that loads later would land on the user's first tap (seen in the Play
-//     closed test: the tap on Solve / Practice was swallowed by the ad).
-//   - Banner on Home + Tutorial pages: adaptive size, anchored bottom.
-//     The WebView footer gets a CSS-driven safe-area inset so it isn't
-//     hidden by the banner.
-//   - Post-solve interstitial: after a solution is fully stepped through,
-//     capped to 1× per 5 minutes, and never before the user finishes
-//     their first solve of the session.
-//   - Solve / Practice / Camera pages stay banner-free.
+// Placement policy:
+//   - App open ad (Google's format for app launch, with its own "Continue to
+//     app" button):
+//       * cold start: ~1.5s after launch, only while the user hasn't touched
+//         the app yet and within COLD_START_DEADLINE_MS of launch — an ad that
+//         loads later would land on the user's first tap (seen in the Play
+//         closed test, when this was an interstitial);
+//       * back from the background after at least RESUME_MIN_AWAY_MS away.
+//   - Interstitial when a task is done: a solution played to the end, or a
+//     Practice case solved. Never for the session's first completed task.
+//   - Every full-screen ad (app open or interstitial) is at most 1 per
+//     FULL_SCREEN_COOLDOWN_MS.
+//   - Banner on Home + Learn pages: adaptive size, just above the tab bar.
+//     The page reserves its height at the bottom (see Layout in App.tsx).
+//   - Solve / Practice / Camera pages stay banner-free: their controls sit at
+//     the bottom and are tapped repeatedly, so a banner there invites
+//     accidental clicks.
 
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import {
   AdMob,
   BannerAdPluginEvents,
@@ -32,13 +37,20 @@ let initializing: Promise<void> | null = null;
 let bannerVisible = false;
 let interstitialReady = false;
 let interstitialLoading: Promise<void> | null = null;
+let appOpenReady = false;
+let appOpenLoadedAt = 0;
+let appOpenLoading: Promise<void> | null = null;
 let coldStartShown = false;
-let lastInterstitialAt = 0;
-let firstSolveCompleted = false;
+let lastFullScreenAt = 0;
+let firstTaskCompleted = false;
+let backgroundedAt = 0;
 
-const INTERSTITIAL_COOLDOWN_MS = 5 * 60 * 1000;
+const FULL_SCREEN_COOLDOWN_MS = 5 * 60 * 1000;
 const COLD_START_DELAY_MS = 1500;
 const COLD_START_DEADLINE_MS = 10000;
+const RESUME_MIN_AWAY_MS = 5 * 60 * 1000;
+/** Google: a loaded app open ad expires after four hours. */
+const APP_OPEN_MAX_AGE_MS = 4 * 60 * 60 * 1000;
 
 // When the JS bundle started (≈ app launch) and whether the user has touched
 // the app since — the cold-start ad must never interrupt an interaction.
@@ -54,6 +66,14 @@ if (isNative && typeof window !== 'undefined') {
 
 function setBannerInsetPx(px: number): void {
   document.documentElement.style.setProperty('--ad-banner-h', `${px}px`);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, Math.max(0, ms)));
+}
+
+function inCooldown(): boolean {
+  return Date.now() - lastFullScreenAt < FULL_SCREEN_COOLDOWN_MS;
 }
 
 async function ensureInitialized(): Promise<void> {
@@ -99,14 +119,24 @@ async function ensureInitialized(): Promise<void> {
 export async function initAds(): Promise<void> {
   if (!isNative) return;
   await ensureInitialized();
-  // Pre-load an interstitial so cold-start + first post-solve trigger feel
-  // instant. If the load fails (no network etc.), we just skip showing.
+  // Pre-load both full-screen formats so they show at once when their moment
+  // comes. If a load fails (no network etc.), that moment just passes.
+  void prepareAppOpen();
   void prepareInterstitial();
+  App.addListener('appStateChange', ({ isActive }) => {
+    if (!isActive) {
+      backgroundedAt = Date.now();
+      return;
+    }
+    const away = backgroundedAt ? Date.now() - backgroundedAt : 0;
+    backgroundedAt = 0;
+    if (away >= RESUME_MIN_AWAY_MS && !inCooldown()) void showAppOpenIfReady();
+  }).catch((err: unknown) => console.warn('[ads] appStateChange listener failed', err));
 }
 
 function prepareInterstitial(): Promise<void> {
   if (!isNative || interstitialReady) return Promise.resolve();
-  // One load at a time: initAds starts it, the cold-start ad waits on it.
+  // One load at a time.
   if (interstitialLoading) return interstitialLoading;
   interstitialLoading = (async () => {
     try {
@@ -122,22 +152,57 @@ function prepareInterstitial(): Promise<void> {
   return interstitialLoading;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, Math.max(0, ms)));
-}
-
 async function showInterstitialIfReady(): Promise<boolean> {
   if (!isNative || !interstitialReady) return false;
   try {
     await AdMob.showInterstitial();
     interstitialReady = false;
-    lastInterstitialAt = Date.now();
+    lastFullScreenAt = Date.now();
     void prepareInterstitial(); // reload for next time
     return true;
   } catch (err) {
     console.warn('[ads] showInterstitial failed', err);
     interstitialReady = false;
     return false;
+  }
+}
+
+function prepareAppOpen(): Promise<void> {
+  if (!isNative || appOpenReady) return Promise.resolve();
+  // One load at a time: initAds starts it, the cold-start ad waits on it.
+  if (appOpenLoading) return appOpenLoading;
+  appOpenLoading = (async () => {
+    try {
+      const { appOpen } = getAdIds();
+      await AdMob.loadAppOpen({ adId: appOpen });
+      appOpenReady = true;
+      appOpenLoadedAt = Date.now();
+    } catch (err) {
+      console.warn('[ads] loadAppOpen failed', err);
+    } finally {
+      appOpenLoading = null;
+    }
+  })();
+  return appOpenLoading;
+}
+
+async function showAppOpenIfReady(): Promise<boolean> {
+  if (!isNative || !appOpenReady) return false;
+  if (Date.now() - appOpenLoadedAt > APP_OPEN_MAX_AGE_MS) {
+    appOpenReady = false;
+    void prepareAppOpen();
+    return false;
+  }
+  try {
+    await AdMob.showAppOpen();
+    lastFullScreenAt = Date.now();
+    return true;
+  } catch (err) {
+    console.warn('[ads] showAppOpen failed', err);
+    return false;
+  } finally {
+    appOpenReady = false;
+    void prepareAppOpen(); // reload for the next return to the app
   }
 }
 
@@ -149,57 +214,33 @@ export async function maybeShowColdStartAd(): Promise<void> {
   // screen feel hostile.
   await sleep(COLD_START_DELAY_MS - (Date.now() - launchedAt));
   // Give the preload until the deadline to finish, no longer.
-  if (!interstitialReady) {
+  if (!appOpenReady) {
     await Promise.race([
-      prepareInterstitial(),
+      prepareAppOpen(),
       sleep(COLD_START_DEADLINE_MS - (Date.now() - launchedAt)),
     ]);
   }
   // Once the user is using the app, a full-screen ad would swallow their tap.
   if (userInteracted || Date.now() - launchedAt > COLD_START_DEADLINE_MS) return;
-  await showInterstitialIfReady();
+  await showAppOpenIfReady();
 }
 
-export async function maybeShowPostSolveAd(): Promise<void> {
+/**
+ * A task is done — a solution played to the end or a Practice case solved —
+ * which is a natural break for an interstitial.
+ */
+export async function maybeShowTaskCompleteAd(): Promise<void> {
   if (!isNative) return;
-  // First solve of the session is on the house — interrupting a user's
-  // first success would set a bad tone.
-  if (!firstSolveCompleted) {
-    firstSolveCompleted = true;
+  // The session's first completed task is on the house — interrupting a
+  // user's first success would set a bad tone.
+  if (!firstTaskCompleted) {
+    firstTaskCompleted = true;
     return;
   }
-  if (Date.now() - lastInterstitialAt < INTERSTITIAL_COOLDOWN_MS) return;
+  if (inCooldown()) return;
   await ensureInitialized();
   if (!interstitialReady) await prepareInterstitial();
   await showInterstitialIfReady();
-}
-
-/**
- * Resolve the actual pixel value of `env(safe-area-inset-bottom)` via a
- * hidden probe element. CSS `env()` doesn't expand inside getComputedStyle,
- * so we measure it by rendering a 0-width box whose height is the inset.
- */
-function measureSafeBottomPx(): number {
-  if (typeof document === 'undefined') return 0;
-  const probe = document.createElement('div');
-  probe.style.cssText =
-    'position:fixed;left:0;bottom:0;width:0;visibility:hidden;height:env(safe-area-inset-bottom,0px)';
-  document.body.appendChild(probe);
-  const h = probe.getBoundingClientRect().height;
-  probe.remove();
-  return Math.round(h);
-}
-
-/**
- * Where the plugin measures `margin` from. iOS pins the banner to the
- * safe-area layout guide, so the home-indicator inset is already below it.
- * On Android our patch (patches/) measures from the WebView's bottom edge,
- * so the page's own safe-area inset has to be added. Adding the inset on iOS
- * too left a gap under the banner the size of the inset, and the banner
- * covered that much of the page.
- */
-function marginIncludesSafeInset(): boolean {
-  return Capacitor.getPlatform() !== 'ios';
 }
 
 function tabBarHeightPx(): number {
@@ -224,11 +265,12 @@ export async function showBottomBanner(): Promise<void> {
     await ensureInitialized();
     if (!bannerWanted) return;
     const { banner } = getAdIds();
-    // Push the native banner up by the tab bar's full height so it sits just
-    // ABOVE the in-app bottom tab bar (`margin` is in dp = CSS px).
-    // Note: on Android this relies on the patch in patches/ — without it the
-    // plugin positions the banner from the window insets instead.
-    const marginPx = tabBarHeightPx() + (marginIncludesSafeInset() ? measureSafeBottomPx() : 0);
+    // Push the native banner up by the tab bar's height so it sits just ABOVE
+    // the in-app bottom tab bar (`margin` is in dp = CSS px). The plugin
+    // measures it from the safe area — iOS pins the banner to the safe-area
+    // guide, and on Android 8.3+ adds the system-bar inset Capacitor leaves
+    // to the page — so the safe inset below the tab bar is already counted.
+    const marginPx = tabBarHeightPx();
     const options: BannerAdOptions = {
       adId: banner,
       adSize: BannerAdSize.ADAPTIVE_BANNER,

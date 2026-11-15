@@ -13,6 +13,7 @@ import { CubeMiniNet } from '@ui/components/CubeMiniNet/CubeMiniNet';
 import { SizeSelector } from '@ui/components/SizeSelector/SizeSelector';
 import { usePracticeSession } from '@ui/hooks/usePracticeSession';
 import { useI18n } from '@ui/i18n/I18nProvider';
+import { maybeShowTaskCompleteAd } from '@/ads/admob';
 
 export interface PracticePageProps {
   size: CubeSize;
@@ -76,6 +77,15 @@ function PracticeBody({ tutorial, size }: { tutorial: Tutorial; size: CubeSize }
   }, [size, activeCase]);
 
   const session = usePracticeSession(size, initial, (cube) => cube.isSolved());
+
+  // A solved case is a natural break: once the success message has had a
+  // moment on screen, the ad module may show an interstitial (its own rules:
+  // never the session's first completed task, at most one per 5 minutes).
+  useEffect(() => {
+    if (!session.reached) return;
+    const timer = setTimeout(() => void maybeShowTaskCompleteAd(), 1200);
+    return () => clearTimeout(timer);
+  }, [session.reached]);
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 sm:gap-5 sm:py-6 lg:py-10">

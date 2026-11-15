@@ -8,16 +8,19 @@ import { Capacitor } from '@capacitor/core';
 interface AdIdSet {
   banner: string;
   interstitial: string;
+  appOpen: string;
 }
 
 const test: Record<'ios' | 'android', AdIdSet> = {
   ios: {
     banner: 'ca-app-pub-3940256099942544/2934735716',
     interstitial: 'ca-app-pub-3940256099942544/4411468910',
+    appOpen: 'ca-app-pub-3940256099942544/5575463023',
   },
   android: {
     banner: 'ca-app-pub-3940256099942544/6300978111',
     interstitial: 'ca-app-pub-3940256099942544/1033173712',
+    appOpen: 'ca-app-pub-3940256099942544/9257395921',
   },
 };
 
@@ -27,10 +30,12 @@ const prod: Record<'ios' | 'android', AdIdSet> = {
   ios: {
     banner: 'ca-app-pub-2269650446819543/5968405918',
     interstitial: 'ca-app-pub-2269650446819543/1808229661',
+    appOpen: 'ca-app-pub-2269650446819543/8223253648',
   },
   android: {
     banner: 'ca-app-pub-2269650446819543/8237906648',
     interstitial: 'ca-app-pub-2269650446819543/2901819480',
+    appOpen: 'ca-app-pub-2269650446819543/1268952154',
   },
 };
 
@@ -44,7 +49,7 @@ const useProd = import.meta.env.VITE_USE_PROD_ADS === '1';
 export function getAdIds(): AdIdSet {
   const platform = Capacitor.getPlatform() === 'ios' ? 'ios' : 'android';
   const set = useProd ? prod[platform] : test[platform];
-  if (useProd && (!set.banner || !set.interstitial)) {
+  if (useProd && (!set.banner || !set.interstitial || !set.appOpen)) {
     // eslint-disable-next-line no-console
     console.warn('[ads] VITE_USE_PROD_ADS=1 but adIds.ts has empty prod IDs');
   }

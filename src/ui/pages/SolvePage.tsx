@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { maybeShowPostSolveAd } from '@/ads/admob';
+import { maybeShowTaskCompleteAd } from '@/ads/admob';
 import { Shuffle, Sparkles, Brush, Camera, Loader2, RotateCcw } from 'lucide-react';
 import type { CubeSize } from '@core/cube/ICube';
 import { CubeViewer3D } from '@ui/components/CubeViewer3D/CubeViewer3D';
@@ -89,7 +89,7 @@ function SolveBody({ size }: { size: 2 | 3 }) {
   const solveComplete =
     session.solution.length > 0 && session.step === session.solution.length;
   useEffect(() => {
-    if (solveComplete) void maybeShowPostSolveAd();
+    if (solveComplete) void maybeShowTaskCompleteAd();
   }, [solveComplete]);
 
   const titleKey = size === 2 ? 'solve.page2.title' : 'solve.page3.title';
