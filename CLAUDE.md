@@ -28,7 +28,8 @@ pages or components in `ui/`.
 | Web (GH Pages) | `git push main` | `dist/` deployed by [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) with `DEPLOY_TARGET=gh-pages` |
 | Web (Capacitor) | Implicit in iOS / Android workflows | `dist/` with relative `./` asset paths |
 | iOS IPA | GitHub Actions → **iOS Release (TestFlight)** | TestFlight upload via [`.github/workflows/ios-release.yml`](.github/workflows/ios-release.yml) |
-| Android AAB | `npm run release:android` locally | Signed `app-release.aab` ready for Play upload |
+| Android AAB (production) | `npm run release:android` locally | Signed `app-release.aab` with live ads, for the Production track only |
+| Android AAB (testing tracks) | `npm run release:android:test` locally | Signed `app-release.aab` with Google's test ads, for internal / closed testing |
 
 ## Critical architecture decisions
 
@@ -86,14 +87,22 @@ picks the first one whose build number ends in a digit (i.e. not a
 beta seed marker like `17F5022i`).
 
 ### AdMob plugin patch
-`@capacitor-community/admob` 8.x ignores the user-provided `margin`
-option on Android 15+ — the plugin's window-insets listener overwrites
-it with just the system gesture inset. We patch
-`BannerExecutor.java` to add our margin on top of the inset. Patch
-is in [`patches/`](patches/) and applied via
+`@capacitor-community/admob` 8.x positions a bottom banner from the window
+insets on Android 15+ (a listener on the DecorView) and ignores the
+user-provided `margin`. Capacitor 8 sometimes lifts the WebView above the
+system bars itself (older WebViews) and sometimes runs it edge-to-edge, so
+the inset was double-counted on some devices: a gap under the banner and the
+banner over the page. We patch `BannerExecutor.java` to keep a bottom banner
+`margin` dp above the WebView's bottom edge, measured from the layout, on
+every Android version; the JS side (`showBottomBanner` in
+[`src/ads/admob.ts`](src/ads/admob.ts)) passes tab-bar height + the page's
+safe-area inset on Android, tab-bar height alone on iOS (the iOS plugin
+already pins the banner to the safe area). The patch is in
+[`patches/`](patches/) and applied via
 [`patch-package`](https://github.com/ds300/patch-package) on `npm
-install`. Don't bump the plugin major without verifying the patch
-still applies (or upstreaming the fix).
+install`. Don't bump the plugin major without verifying the patch still
+applies. To regenerate it, delete the plugin's `android/build` and
+`android/.gradle` folders first, or patch-package diffs Gradle's output.
 
 ### Cloudflare Web Analytics gate
 [`index.html`](index.html) loads the CF Analytics beacon but only when
@@ -146,11 +155,20 @@ For a new version `1.0.X`:
 3. Commit both in one commit, push.
 4. **iOS**: Actions → iOS Release → Run workflow → input blank
    (workflow reads version from `package.json`).
-5. **Android**: `npm run release:android` locally, upload the AAB to
-   Play Console.
+5. **Android**: `npm run release:android:test` locally for the internal /
+   closed testing tracks (test ads), `npm run release:android` for
+   Production (live ads); upload the AAB to Play Console. Each AAB needs
+   its own `versionCode`, so a tested build is rebuilt with live ads under
+   the next `versionCode` before it goes to Production — never promote a
+   test-ads build.
 6. App Store Connect: answer Missing Compliance = No, attach build to
    Cubist core group.
 7. Play Console: write release notes, start rollout to Internal track.
+
+**Why testers get test ads:** testing-track testers (Testers Community,
+friends and family) are not organic users. Their impressions and clicks on
+live ads can be judged invalid traffic, and the AdMob account is shared
+with the owner's other apps. Keep live ads for Production.
 
 ## Common errors and root causes
 

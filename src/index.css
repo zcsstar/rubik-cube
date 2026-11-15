@@ -33,14 +33,22 @@ html, body, #root { height: 100%; }
   --ad-banner-h: 0px;
 }
 
-/* The native ad banner sits at the very bottom of the screen, the tab bar
- * sits above it, and any in-content footers sit above both. */
-body {
-  padding-bottom: calc(var(--ad-banner-h) + var(--tab-bar-h) + var(--safe-bottom));
-}
+/* The tab bar is fixed at the bottom and the native ad banner floats just
+ * above it, so the page reserves their height at its end (see Layout in
+ * App.tsx). The space has to be on the growing page container, not on body:
+ * body is 100% high, so its padding sat at the viewport's bottom while the
+ * content overflowed past it, and the last ~150px stayed under the bar. */
 
 @media (prefers-color-scheme: dark) {
   html { color-scheme: dark; }
+}
+
+/* Buttons and links are controls, not text: a long press on a phone must
+ * not select their labels or open the link preview. */
+button, a, [role='button'] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Subtle scrollbar */

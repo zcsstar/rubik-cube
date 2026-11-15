@@ -49,13 +49,15 @@ VITE_USE_PROD_ADS=1 npm run build
 
 The CI workflow that produces store-bound IPAs / AABs should set this; the
 default `npm run build` keeps test IDs so dev builds never charge real
-advertisers.
+advertisers. On Android, `npm run release:android` (live ads) is for the
+Production track only; testing tracks get `npm run release:android:test`
+(test ads) — see CLAUDE.md, release cadence.
 
 ## Placement summary
 
 | Surface                          | Format        | Frequency                                                  |
 |----------------------------------|---------------|------------------------------------------------------------|
-| Cold start                       | Interstitial  | 1× per session, shown 1.5s after launch                    |
+| Cold start                       | Interstitial  | 1× per session, shown 1.5s after launch; skipped once the user has touched the app or if it isn't loaded within 10s |
 | Home page                        | Adaptive banner | Always visible, anchored bottom                          |
 | Learn / Tutorial pages           | Adaptive banner | Always visible, anchored bottom                          |
 | After completing a solution      | Interstitial  | At most 1× per 5 min, never before the first solve of session |

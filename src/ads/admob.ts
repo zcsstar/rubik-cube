@@ -3,7 +3,10 @@
 //
 // Placement policy (final spec):
 //   - Cold-start interstitial: at most 1× per session, shown ~1.5s after
-//     launch so the splash is visible first.
+//     launch so the splash is visible first — and only while the user hasn't
+//     touched the app yet and within COLD_START_DEADLINE_MS of launch. An ad
+//     that loads later would land on the user's first tap (seen in the Play
+//     closed test: the tap on Solve / Practice was swallowed by the ad).
 //   - Banner on Home + Tutorial pages: adaptive size, anchored bottom.
 //     The WebView footer gets a CSS-driven safe-area inset so it isn't
 //     hidden by the banner.
@@ -28,12 +31,26 @@ let initialized = false;
 let initializing: Promise<void> | null = null;
 let bannerVisible = false;
 let interstitialReady = false;
+let interstitialLoading: Promise<void> | null = null;
 let coldStartShown = false;
 let lastInterstitialAt = 0;
 let firstSolveCompleted = false;
 
 const INTERSTITIAL_COOLDOWN_MS = 5 * 60 * 1000;
 const COLD_START_DELAY_MS = 1500;
+const COLD_START_DEADLINE_MS = 10000;
+
+// When the JS bundle started (≈ app launch) and whether the user has touched
+// the app since — the cold-start ad must never interrupt an interaction.
+const launchedAt = Date.now();
+let userInteracted = false;
+if (isNative && typeof window !== 'undefined') {
+  const markInteracted = () => {
+    userInteracted = true;
+  };
+  window.addEventListener('pointerdown', markInteracted, { capture: true, once: true });
+  window.addEventListener('keydown', markInteracted, { capture: true, once: true });
+}
 
 function setBannerInsetPx(px: number): void {
   document.documentElement.style.setProperty('--ad-banner-h', `${px}px`);
@@ -87,15 +104,26 @@ export async function initAds(): Promise<void> {
   void prepareInterstitial();
 }
 
-async function prepareInterstitial(): Promise<void> {
-  if (!isNative || interstitialReady) return;
-  try {
-    const { interstitial } = getAdIds();
-    await AdMob.prepareInterstitial({ adId: interstitial });
-    interstitialReady = true;
-  } catch (err) {
-    console.warn('[ads] prepareInterstitial failed', err);
-  }
+function prepareInterstitial(): Promise<void> {
+  if (!isNative || interstitialReady) return Promise.resolve();
+  // One load at a time: initAds starts it, the cold-start ad waits on it.
+  if (interstitialLoading) return interstitialLoading;
+  interstitialLoading = (async () => {
+    try {
+      const { interstitial } = getAdIds();
+      await AdMob.prepareInterstitial({ adId: interstitial });
+      interstitialReady = true;
+    } catch (err) {
+      console.warn('[ads] prepareInterstitial failed', err);
+    } finally {
+      interstitialLoading = null;
+    }
+  })();
+  return interstitialLoading;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, Math.max(0, ms)));
 }
 
 async function showInterstitialIfReady(): Promise<boolean> {
@@ -119,11 +147,17 @@ export async function maybeShowColdStartAd(): Promise<void> {
   await ensureInitialized();
   // Wait briefly so the user sees the app load first; ads on a black
   // screen feel hostile.
-  await new Promise((r) => setTimeout(r, COLD_START_DELAY_MS));
-  // Ensure interstitial has had a chance to load.
-  if (!interstitialReady) await prepareInterstitial();
-  const shown = await showInterstitialIfReady();
-  if (shown) lastInterstitialAt = Date.now();
+  await sleep(COLD_START_DELAY_MS - (Date.now() - launchedAt));
+  // Give the preload until the deadline to finish, no longer.
+  if (!interstitialReady) {
+    await Promise.race([
+      prepareInterstitial(),
+      sleep(COLD_START_DEADLINE_MS - (Date.now() - launchedAt)),
+    ]);
+  }
+  // Once the user is using the app, a full-screen ad would swallow their tap.
+  if (userInteracted || Date.now() - launchedAt > COLD_START_DEADLINE_MS) return;
+  await showInterstitialIfReady();
 }
 
 export async function maybeShowPostSolveAd(): Promise<void> {
@@ -156,6 +190,18 @@ function measureSafeBottomPx(): number {
   return Math.round(h);
 }
 
+/**
+ * Where the plugin measures `margin` from. iOS pins the banner to the
+ * safe-area layout guide, so the home-indicator inset is already below it.
+ * On Android our patch (patches/) measures from the WebView's bottom edge,
+ * so the page's own safe-area inset has to be added. Adding the inset on iOS
+ * too left a gap under the banner the size of the inset, and the banner
+ * covered that much of the page.
+ */
+function marginIncludesSafeInset(): boolean {
+  return Capacitor.getPlatform() !== 'ios';
+}
+
 function tabBarHeightPx(): number {
   if (typeof document === 'undefined') return 56;
   const raw = getComputedStyle(document.documentElement).getPropertyValue('--tab-bar-h').trim();
@@ -163,39 +209,57 @@ function tabBarHeightPx(): number {
   return Number.isFinite(n) ? n : 56;
 }
 
+// Whether the current page wants the banner. Showing it is async (SDK init,
+// native call), so a page the user leaves quickly can ask to hide it before
+// it is up; without this the banner then stayed on banner-free pages
+// (seen on Practice after a quick first tap).
+let bannerWanted = false;
+let bannerPending: Promise<void> | null = null;
+
 export async function showBottomBanner(): Promise<void> {
-  if (!isNative || bannerVisible) return;
-  await ensureInitialized();
-  const { banner } = getAdIds();
-  // Push the native banner up by tab-bar height + system inset so it sits
-  // ABOVE the in-app bottom tab bar. AdMob measures `margin` from the
-  // anchor position (bottom of the screen for BOTTOM_CENTER), in dp.
-  // Push the banner up by tab-bar height + system gesture inset so the
-  // tab bar can sit at the very bottom of the screen below the ad.
-  // Note: requires the patch in patches/ on Android 15+ — without it the
-  // plugin overrides our margin with just the system inset.
-  const marginPx = tabBarHeightPx() + measureSafeBottomPx();
-  const options: BannerAdOptions = {
-    adId: banner,
-    adSize: BannerAdSize.ADAPTIVE_BANNER,
-    position: BannerAdPosition.BOTTOM_CENTER,
-    margin: marginPx,
-  };
+  if (!isNative) return;
+  bannerWanted = true;
+  if (bannerVisible || bannerPending) return;
+  bannerPending = (async () => {
+    await ensureInitialized();
+    if (!bannerWanted) return;
+    const { banner } = getAdIds();
+    // Push the native banner up by the tab bar's full height so it sits just
+    // ABOVE the in-app bottom tab bar (`margin` is in dp = CSS px).
+    // Note: on Android this relies on the patch in patches/ — without it the
+    // plugin positions the banner from the window insets instead.
+    const marginPx = tabBarHeightPx() + (marginIncludesSafeInset() ? measureSafeBottomPx() : 0);
+    const options: BannerAdOptions = {
+      adId: banner,
+      adSize: BannerAdSize.ADAPTIVE_BANNER,
+      position: BannerAdPosition.BOTTOM_CENTER,
+      margin: marginPx,
+    };
+    try {
+      await AdMob.showBanner(options);
+      bannerVisible = true;
+      // Optimistic default — adaptive banner is up to ~90px tall depending on
+      // device + orientation. The SizeChanged listener refines this once the
+      // ad actually renders; the upper bound here keeps content off the ad
+      // until then.
+      setBannerInsetPx(90);
+    } catch (err) {
+      console.warn('[ads] showBanner failed', err);
+    }
+  })();
   try {
-    await AdMob.showBanner(options);
-    bannerVisible = true;
-    // Optimistic default — adaptive banner is up to ~90px tall depending on
-    // device + orientation. The SizeChanged listener refines this once the
-    // ad actually renders; the upper bound here keeps content off the ad
-    // until then.
-    setBannerInsetPx(90);
-  } catch (err) {
-    console.warn('[ads] showBanner failed', err);
+    await bannerPending;
+  } finally {
+    bannerPending = null;
   }
+  // The page asked to hide it while it was still coming up.
+  if (!bannerWanted) await hideBottomBanner();
 }
 
 export async function hideBottomBanner(): Promise<void> {
-  if (!isNative || !bannerVisible) return;
+  if (!isNative) return;
+  bannerWanted = false;
+  if (!bannerVisible) return;
   try {
     await AdMob.removeBanner();
   } catch (err) {

@@ -31,7 +31,12 @@ function PageFallback() {
 function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
   return (
-    <div className="min-h-full flex flex-col">
+    <div
+      className="min-h-full flex flex-col"
+      // Reserve the fixed tab bar + ad banner at the end of the page so the
+      // footer can scroll clear of them (see index.css).
+      style={{ paddingBottom: 'calc(var(--ad-banner-h) + var(--tab-bar-h) + var(--safe-bottom))' }}
+    >
       <header
         className="sticky top-0 z-20 border-b border-slate-200 bg-white/85 backdrop-blur dark:border-slate-800 dark:bg-slate-950/85"
         style={{ paddingTop: 'var(--safe-top)' }}
